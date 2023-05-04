@@ -85,36 +85,7 @@ class ADARNN(Model):
         self.seed = seed
 
         self.logger.info(
-            "ADARNN parameters setting:"
-            "\nd_feat : {}"
-            "\nhidden_size : {}"
-            "\nnum_layers : {}"
-            "\ndropout : {}"
-            "\nn_epochs : {}"
-            "\nlr : {}"
-            "\nmetric : {}"
-            "\nbatch_size : {}"
-            "\nearly_stop : {}"
-            "\noptimizer : {}"
-            "\nloss_type : {}"
-            "\nvisible_GPU : {}"
-            "\nuse_GPU : {}"
-            "\nseed : {}".format(
-                d_feat,
-                hidden_size,
-                num_layers,
-                dropout,
-                n_epochs,
-                lr,
-                metric,
-                batch_size,
-                early_stop,
-                optimizer.lower(),
-                loss,
-                GPU,
-                self.use_gpu,
-                seed,
-            )
+            f"ADARNN parameters setting:\nd_feat : {d_feat}\nhidden_size : {hidden_size}\nnum_layers : {num_layers}\ndropout : {dropout}\nn_epochs : {n_epochs}\nlr : {lr}\nmetric : {metric}\nbatch_size : {batch_size}\nearly_stop : {early_stop}\noptimizer : {optimizer.lower()}\nloss_type : {loss}\nvisible_GPU : {GPU}\nuse_GPU : {self.use_gpu}\nseed : {seed}"
         )
 
         if self.seed is not None:
@@ -141,7 +112,7 @@ class ADARNN(Model):
         elif optimizer.lower() == "gd":
             self.train_optimizer = optim.SGD(self.model.parameters(), lr=self.lr)
         else:
-            raise NotImplementedError("optimizer {} is not supported!".format(optimizer))
+            raise NotImplementedError(f"optimizer {optimizer} is not supported!")
 
         self.fitted = False
         self.model.to(self.device)
@@ -180,7 +151,7 @@ class ADARNN(Model):
                 continue
 
             total_loss = torch.zeros(1).to(self.device)
-            for i, n in enumerate(index):
+            for n in index:
                 feature_s = list_feat[n[0]]
                 feature_t = list_feat[n[1]]
                 label_reg_s = list_label[n[0]]
@@ -194,7 +165,7 @@ class ADARNN(Model):
                 else:
                     pred_all, loss_transfer, dist, weight_mat = self.model.forward_Boosting(feature_all, weight_mat)
                     dist_mat = dist_mat + dist
-                pred_s = pred_all[0 : feature_s.size(0)]
+                pred_s = pred_all[:feature_s.size(0)]
                 pred_t = pred_all[feature_s.size(0) :]
 
                 loss_s = criterion(pred_s, label_reg_s)
@@ -215,10 +186,9 @@ class ADARNN(Model):
 
     def calc_all_metrics(self, pred):
         """pred is a pandas dataframe that has two attributes: score (pred) and label (real)"""
-        res = {}
         ic = pred.groupby(level="datetime").apply(lambda x: x.label.corr(x.score))
         rank_ic = pred.groupby(level="datetime").apply(lambda x: x.label.corr(x.score, method="spearman"))
-        res["ic"] = ic.mean()
+        res = {"ic": ic.mean()}
         res["icir"] = ic.mean() / ic.std()
         res["ric"] = rank_ic.mean()
         res["ricir"] = rank_ic.mean() / rank_ic.std()
@@ -231,8 +201,7 @@ class ADARNN(Model):
         preds = self.infer(df["feature"])
         label = df["label"].squeeze()
         preds = pd.DataFrame({"label": label, "score": preds}, index=df.index)
-        metrics = self.calc_all_metrics(preds)
-        return metrics
+        return self.calc_all_metrics(preds)
 
     def log_metrics(self, mode, metrics):
         metrics = ["{}/{}: {:.6f}".format(k, mode, v) for k, v in metrics.items()]
@@ -361,15 +330,13 @@ class data_loader(Dataset):
 
 
 def get_stock_loader(df, batch_size, shuffle=True):
-    train_loader = DataLoader(data_loader(df), batch_size=batch_size, shuffle=shuffle)
-    return train_loader
+    return DataLoader(data_loader(df), batch_size=batch_size, shuffle=shuffle)
 
 
 def get_index(num_domain=2):
     index = []
     for i in range(num_domain):
-        for j in range(i + 1, num_domain + 1):
-            index.append((i, j))
+        index.extend((i, j) for j in range(i + 1, num_domain + 1))
     return index
 
 
@@ -435,7 +402,7 @@ class AdaRNN(nn.Module):
             self.gate = gate
 
             bnlst = nn.ModuleList()
-            for i in range(len(n_hiddens)):
+            for _ in range(len(n_hiddens)):
                 bnlst.append(nn.BatchNorm1d(len_seq))
             self.bn_lst = bnlst
             self.softmax = torch.nn.Softmax(dim=0)
@@ -458,11 +425,11 @@ class AdaRNN(nn.Module):
         out_list_all, out_weight_list = out[1], out[2]
         out_list_s, out_list_t = self.get_features(out_list_all)
         loss_transfer = torch.zeros((1,)).to(self.device)
+        h_start = 0
         for i, n in enumerate(out_list_s):
             criterion_transder = TransferLoss(loss_type=self.trans_loss, input_dim=n.shape[2])
-            h_start = 0
             for j in range(h_start, self.len_seq, 1):
-                i_start = j - len_win if j - len_win >= 0 else 0
+                i_start = max(j - len_win, 0)
                 i_end = j + len_win if j + len_win < self.len_seq else self.len_seq - 1
                 for k in range(i_start, i_end + 1):
                     weight = (
@@ -490,19 +457,18 @@ class AdaRNN(nn.Module):
         return out, out_lis, out_weight_list
 
     def process_gate_weight(self, out, index):
-        x_s = out[0 : int(out.shape[0] // 2)]
+        x_s = out[:int(out.shape[0] // 2)]
         x_t = out[out.shape[0] // 2 : out.shape[0]]
         x_all = torch.cat((x_s, x_t), 2)
         x_all = x_all.view(x_all.shape[0], -1)
         weight = torch.sigmoid(self.bn_lst[index](self.gate[index](x_all.float())))
         weight = torch.mean(weight, dim=0)
-        res = self.softmax(weight).squeeze()
-        return res
+        return self.softmax(weight).squeeze()
 
     def get_features(self, output_list):
         fea_list_src, fea_list_tar = [], []
         for fea in output_list:
-            fea_list_src.append(fea[0 : fea.size(0) // 2])
+            fea_list_src.append(fea[:fea.size(0) // 2])
             fea_list_tar.append(fea[fea.size(0) // 2 :])
         return fea_list_src, fea_list_tar
 
@@ -645,8 +611,7 @@ def adv(source, target, device, input_dim=256, hidden_dim=512):
     pred_src = adv_net(reverse_src)
     pred_tar = adv_net(reverse_tar)
     loss_s, loss_t = domain_loss(pred_src, domain_src), domain_loss(pred_tar, domain_tar)
-    loss = loss_s + loss_t
-    return loss
+    return loss_s + loss_t
 
 
 def CORAL(source, target, device):
@@ -693,8 +658,7 @@ class MMD_loss(nn.Module):
 
     def linear_mmd(self, X, Y):
         delta = X.mean(axis=0) - Y.mean(axis=0)
-        loss = delta.dot(delta.T)
-        return loss
+        return delta.dot(delta.T)
 
     def forward(self, source, target):
         if self.kernel_type == "linear":
@@ -723,8 +687,7 @@ class Mine_estimator(nn.Module):
         loss_joint = self.mine_model(X, Y)
         loss_marginal = self.mine_model(X, Y_shffle)
         ret = torch.mean(loss_joint) - torch.log(torch.mean(torch.exp(loss_marginal)))
-        loss = -ret
-        return loss
+        return -ret
 
 
 class Mine(nn.Module):
@@ -736,8 +699,7 @@ class Mine(nn.Module):
 
     def forward(self, x, y):
         h1 = F.leaky_relu(self.fc1_x(x) + self.fc1_y(y))
-        h2 = self.fc2(h1)
-        return h2
+        return self.fc2(h1)
 
 
 def pairwise_dist(X, Y):
@@ -765,9 +727,7 @@ def pa(X, Y):
     XX = np.sum(np.square(X), axis=1)
     XX = np.transpose([XX])
     YY = np.sum(np.square(Y), axis=1)
-    dist = XX + YY - 2 * XY
-
-    return dist
+    return XX + YY - 2 * XY
 
 
 def kl_div(source, target):
@@ -776,8 +736,7 @@ def kl_div(source, target):
     elif len(source) > len(target):
         source = source[: len(target)]
     criterion = nn.KLDivLoss(reduction="batchmean")
-    loss = criterion(source.log(), target)
-    return loss
+    return criterion(source.log(), target)
 
 
 def js(source, target):

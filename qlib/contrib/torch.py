@@ -12,10 +12,7 @@ import pandas as pd
 
 def data_to_tensor(data, device="cpu", raise_error=False):
     if isinstance(data, torch.Tensor):
-        if device == "cpu":
-            return data.cpu()
-        else:
-            return data.to(device)
+        return data.cpu() if device == "cpu" else data.to(device)
     if isinstance(data, (pd.DataFrame, pd.Series)):
         return data_to_tensor(torch.from_numpy(data.values).float(), device)
     elif isinstance(data, np.ndarray):

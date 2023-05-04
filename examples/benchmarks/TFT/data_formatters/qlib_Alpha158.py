@@ -204,7 +204,7 @@ class Alpha158Formatter(GenericDataFormatter):
     def get_fixed_params(self):
         """Returns fixed model parameters for experiments."""
 
-        fixed_params = {
+        return {
             "total_time_steps": 6 + 6,
             "num_encoder_steps": 6,
             "num_epochs": 100,
@@ -212,12 +212,10 @@ class Alpha158Formatter(GenericDataFormatter):
             "multiprocessing_workers": 5,
         }
 
-        return fixed_params
-
     def get_default_model_params(self):
         """Returns default optimised model parameters."""
 
-        model_params = {
+        return {
             "dropout_rate": 0.4,
             "hidden_layer_size": 160,
             "learning_rate": 0.0001,
@@ -226,5 +224,3 @@ class Alpha158Formatter(GenericDataFormatter):
             "num_heads": 1,
             "stack_size": 1,
         }
-
-        return model_params

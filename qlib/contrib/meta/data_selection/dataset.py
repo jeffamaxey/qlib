@@ -53,11 +53,11 @@ class InternalData:
         trainer = auto_filter_kwargs(trainer)(experiment_name=self.exp_name, **trainer_kwargs)
         # NOTE:
         # The handler is initialized for only once.
-        if not trainer.has_worker():
-            self.dh = init_task_handler(perf_task_tpl)
-        else:
-            self.dh = init_instance_by_config(perf_task_tpl["dataset"]["kwargs"]["handler"])
-
+        self.dh = (
+            init_instance_by_config(perf_task_tpl["dataset"]["kwargs"]["handler"])
+            if trainer.has_worker()
+            else init_task_handler(perf_task_tpl)
+        )
         seg = perf_task_tpl["dataset"]["kwargs"]["segments"]
 
         # We want to split the training time period into small segments.
@@ -165,15 +165,13 @@ class MetaTaskDS(MetaTask):
             # Assumptions: the latest data has similar performance like the last month
             sample_time_belong[sample_time_belong.sum(axis=1) != 1, -1] = 1.0
 
-            self.processed_meta_input.update(
-                dict(
-                    X=d_train["feature"],
-                    y=d_train["label"].iloc[:, 0],
-                    X_test=d_test["feature"],
-                    y_test=d_test["label"].iloc[:, 0],
-                    time_belong=sample_time_belong,
-                    test_idx=d_test["label"].index,
-                )
+            self.processed_meta_input |= dict(
+                X=d_train["feature"],
+                y=d_train["label"].iloc[:, 0],
+                X_test=d_test["feature"],
+                y_test=d_test["label"].iloc[:, 0],
+                time_belong=sample_time_belong,
+                test_idx=d_test["label"].index,
             )
 
         # TODO: set device: I think this is not necessary to converting data format.
@@ -185,10 +183,8 @@ class MetaTaskDS(MetaTask):
             meta_info_norm = meta_info_norm.T.fillna(
                 meta_info_norm.max(axis=1)
             ).T  # fill it with row max to align with previous implementation
-        elif self.fill_method == "zero":
-            pass
-        else:
-            raise NotImplementedError(f"This type of input is not supported")
+        elif self.fill_method != "zero":
+            raise NotImplementedError("This type of input is not supported")
         meta_info_norm = meta_info_norm.fillna(0.0)  # always fill zero in case of NaN
         return meta_info_norm
 
@@ -284,7 +280,9 @@ class MetaDatasetDS(MetaTaskDataset):
                 self.task_list.append(t)
             except ValueError as e:
                 logger.warning(f"ValueError: {e}")
-        assert len(self.meta_task_l) > 0, "No meta tasks found. Please check the data and setting"
+        assert (
+            self.meta_task_l
+        ), "No meta tasks found. Please check the data and setting"
 
     def _prepare_meta_ipt(self, task):
         ic_df = self.internal_data.data_ic_df
@@ -319,6 +317,6 @@ class MetaDatasetDS(MetaTaskDataset):
             elif segment == "test":
                 return self.meta_task_l[train_task_n:]
             else:
-                raise NotImplementedError(f"This type of input is not supported")
+                raise NotImplementedError("This type of input is not supported")
         else:
-            raise NotImplementedError(f"This type of input is not supported")
+            raise NotImplementedError("This type of input is not supported")

@@ -298,7 +298,7 @@ class BaseExecutor:
             self.trade_account.current_position.settle_commit()
 
         if return_value is not None:
-            return_value.update({"execute_result": res})
+            return_value["execute_result"] = res
 
         return res
 
@@ -584,7 +584,7 @@ class SimulatorExecutor(BaseExecutor):
             # It equals to parallel trading after sorting the order by direction
             order_it = sorted(orders, key=lambda order: -order.direction)
         else:
-            raise NotImplementedError(f"This type of input is not supported")
+            raise NotImplementedError("This type of input is not supported")
         return order_it
 
     def _update_dealt_order_amount(self, order: Order) -> None:

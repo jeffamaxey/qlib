@@ -375,9 +375,9 @@ class Account:
         indicator_config : dict, optional
             config of calculating indicators, by default {}
         """
-        if atomic is True and trade_info is None:
+        if atomic and trade_info is None:
             raise ValueError("trade_info is necessary in atomic executor")
-        elif atomic is False and inner_order_indicators is None:
+        elif not atomic and inner_order_indicators is None:
             raise ValueError("inner_order_indicators is necessary in un-atomic executor")
 
         # update current position and hold bar count in each bar end

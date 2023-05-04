@@ -13,12 +13,12 @@ from .config import C
 
 
 class MetaLogger(type):
-    def __new__(mcs, name, bases, attrs):  # pylint: disable=C0204
+    def __new__(cls, name, bases, attrs):  # pylint: disable=C0204
         wrapper_dict = logging.Logger.__dict__.copy()
         for key, val in wrapper_dict.items():
             if key not in attrs and key != "__reduce__":
                 attrs[key] = val
-        return type.__new__(mcs, name, bases, attrs)
+        return type.__new__(cls, name, bases, attrs)
 
 
 class QlibLogger(metaclass=MetaLogger):
@@ -64,7 +64,7 @@ def get_module_logger(module_name, level: Optional[int] = None) -> QlibLogger:
     if not module_name.startswith("qlib."):
         # Add a prefix of qlib. when the requested ``module_name`` doesn't start with ``qlib.``.
         # If the module_name is already qlib.xxx, we do not format here. Otherwise, it will become qlib.qlib.xxx.
-        module_name = "qlib.{}".format(module_name)
+        module_name = f"qlib.{module_name}"
 
     # Get logger.
     module_logger = QlibLogger(module_name)
@@ -103,8 +103,7 @@ class TimeInspector:
         :return: float
             Time diff calculated by last time mark with current time.
         """
-        cost_time = time() - cls.time_marks.pop()
-        return cost_time
+        return time() - cls.time_marks.pop()
 
     @classmethod
     def log_cost_time(cls, info="Done"):

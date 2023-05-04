@@ -43,10 +43,12 @@ class P(ElemOperator):
                 get_module_logger("base").warning(f"WARN: period data not found for {str(self)}")
                 return pd.Series(dtype="float32", name=str(self))
 
-        resample_series = pd.Series(
-            resample_data, index=pd.RangeIndex(start_index, end_index + 1), dtype="float32", name=str(self)
+        return pd.Series(
+            resample_data,
+            index=pd.RangeIndex(start_index, end_index + 1),
+            dtype="float32",
+            name=str(self),
         )
-        return resample_series
 
     def _load_feature(self, instrument, start_index, end_index, cur_time):
         return self.feature.load(instrument, start_index, end_index, cur_time)

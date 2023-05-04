@@ -58,11 +58,12 @@ class SignalWCache(Signal):
         self.signal_cache = convert_index_format(signal, level="datetime")
 
     def get_signal(self, start_time: pd.Timestamp, end_time: pd.Timestamp) -> Union[pd.Series, pd.DataFrame]:
-        # the frequency of the signal may not align with the decision frequency of strategy
-        # so resampling from the data is necessary
-        # the latest signal leverage more recent data and therefore is used in trading.
-        signal = resam_ts_data(self.signal_cache, start_time=start_time, end_time=end_time, method="last")
-        return signal
+        return resam_ts_data(
+            self.signal_cache,
+            start_time=start_time,
+            end_time=end_time,
+            method="last",
+        )
 
 
 class ModelSignal(SignalWCache):
@@ -102,4 +103,4 @@ def create_signal_from(
     elif isinstance(obj, (pd.DataFrame, pd.Series)):
         return SignalWCache(signal=obj)
     else:
-        raise NotImplementedError(f"This type of signal is not supported")
+        raise NotImplementedError("This type of signal is not supported")

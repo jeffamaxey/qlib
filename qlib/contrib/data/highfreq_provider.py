@@ -50,14 +50,14 @@ class HighFreqProvider:
         """
 
         dict_feature_path = self.feature_conf["path"]
-        train_feature_path = dict_feature_path[:-4] + "_train.pkl"
-        valid_feature_path = dict_feature_path[:-4] + "_valid.pkl"
-        test_feature_path = dict_feature_path[:-4] + "_test.pkl"
+        train_feature_path = f"{dict_feature_path[:-4]}_train.pkl"
+        valid_feature_path = f"{dict_feature_path[:-4]}_valid.pkl"
+        test_feature_path = f"{dict_feature_path[:-4]}_test.pkl"
 
         dict_label_path = self.label_conf["path"]
-        train_label_path = dict_label_path[:-4] + "_train.pkl"
-        valid_label_path = dict_label_path[:-4] + "_valid.pkl"
-        test_label_path = dict_label_path[:-4] + "_test.pkl"
+        train_label_path = f"{dict_label_path[:-4]}_train.pkl"
+        valid_label_path = f"{dict_label_path[:-4]}_valid.pkl"
+        test_label_path = f"{dict_label_path[:-4]}_test.pkl"
 
         if (
             not os.path.isfile(train_feature_path)
@@ -150,11 +150,11 @@ class HighFreqProvider:
             }
             with open(path, "wb") as f:
                 pkl.dump(data, f)
-            with open(path[:-4] + "train.pkl", "wb") as f:
+            with open(f"{path[:-4]}train.pkl", "wb") as f:
                 pkl.dump(trainset, f)
-            with open(path[:-4] + "valid.pkl", "wb") as f:
+            with open(f"{path[:-4]}valid.pkl", "wb") as f:
                 pkl.dump(validset, f)
-            with open(path[:-4] + "test.pkl", "wb") as f:
+            with open(f"{path[:-4]}test.pkl", "wb") as f:
                 pkl.dump(testset, f)
             res = [data[i] for i in datasets]
             print_log(f"Data generated, time cost: {(time.time() - start_time):.2f}", __name__)
@@ -222,7 +222,7 @@ class HighFreqProvider:
         except KeyError as e:
             raise ValueError("Must specify the path to save the dataset.") from e
 
-        if os.path.isfile(path + "tmp_dataset.pkl"):
+        if os.path.isfile(f"{path}tmp_dataset.pkl"):
             start = time.time()
             print_log("Dataset exists, load from disk.", __name__)
         else:
@@ -234,9 +234,9 @@ class HighFreqProvider:
             dataset = init_instance_by_config(config)
             print_log(f"Dataset init, time cost: {time.time() - start:.2f}", __name__)
             dataset.config(dump_all=False, recursive=True)
-            dataset.to_pickle(path + "tmp_dataset.pkl")
+            dataset.to_pickle(f"{path}tmp_dataset.pkl")
 
-        with open(path + "tmp_dataset.pkl", "rb") as f:
+        with open(f"{path}tmp_dataset.pkl", "rb") as f:
             new_dataset = pkl.load(f)
 
         time_list = D.calendar(start_time=self.start_time, end_time=self.end_time, freq="1min")[::240]
@@ -263,7 +263,7 @@ class HighFreqProvider:
         except KeyError as e:
             raise ValueError("Must specify the path to save the dataset.") from e
 
-        if os.path.isfile(path + "tmp_dataset.pkl"):
+        if os.path.isfile(f"{path}tmp_dataset.pkl"):
             start = time.time()
             print_log("Dataset exists, load from disk.", __name__)
         else:
@@ -275,9 +275,9 @@ class HighFreqProvider:
             dataset = init_instance_by_config(config)
             print_log(f"Dataset init, time cost: {time.time() - start:.2f}", __name__)
             dataset.config(dump_all=False, recursive=True)
-            dataset.to_pickle(path + "tmp_dataset.pkl")
+            dataset.to_pickle(f"{path}tmp_dataset.pkl")
 
-        with open(path + "tmp_dataset.pkl", "rb") as f:
+        with open(f"{path}tmp_dataset.pkl", "rb") as f:
             new_dataset = pkl.load(f)
 
         instruments = D.instruments(market="all")
@@ -287,7 +287,7 @@ class HighFreqProvider:
 
         def generate_dataset(stock):
             if os.path.isfile(path + stock + ".pkl"):
-                print("exist " + stock)
+                print(f"exist {stock}")
                 return
             self._init_qlib(self.qlib_conf)
             new_dataset.handler.config(**{"instruments": [stock]})

@@ -233,7 +233,7 @@ def backtest_daily(
         "min_cost": 5,
     }
     if exchange_kwargs is not None:
-        _exchange_kwargs.update(exchange_kwargs)
+        _exchange_kwargs |= exchange_kwargs
 
     portfolio_metric_dict, indicator_dict = backtest_func(
         start_time=start_time,

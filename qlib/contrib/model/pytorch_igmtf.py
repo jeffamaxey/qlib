@@ -78,38 +78,7 @@ class IGMTF(Model):
         self.seed = seed
 
         self.logger.info(
-            "IGMTF parameters setting:"
-            "\nd_feat : {}"
-            "\nhidden_size : {}"
-            "\nnum_layers : {}"
-            "\ndropout : {}"
-            "\nn_epochs : {}"
-            "\nlr : {}"
-            "\nmetric : {}"
-            "\nearly_stop : {}"
-            "\noptimizer : {}"
-            "\nloss_type : {}"
-            "\nbase_model : {}"
-            "\nmodel_path : {}"
-            "\nvisible_GPU : {}"
-            "\nuse_GPU : {}"
-            "\nseed : {}".format(
-                d_feat,
-                hidden_size,
-                num_layers,
-                dropout,
-                n_epochs,
-                lr,
-                metric,
-                early_stop,
-                optimizer.lower(),
-                loss,
-                base_model,
-                model_path,
-                GPU,
-                self.use_gpu,
-                seed,
-            )
+            f"IGMTF parameters setting:\nd_feat : {d_feat}\nhidden_size : {hidden_size}\nnum_layers : {num_layers}\ndropout : {dropout}\nn_epochs : {n_epochs}\nlr : {lr}\nmetric : {metric}\nearly_stop : {early_stop}\noptimizer : {optimizer.lower()}\nloss_type : {loss}\nbase_model : {base_model}\nmodel_path : {model_path}\nvisible_GPU : {GPU}\nuse_GPU : {self.use_gpu}\nseed : {seed}"
         )
 
         if self.seed is not None:
@@ -131,7 +100,7 @@ class IGMTF(Model):
         elif optimizer.lower() == "gd":
             self.train_optimizer = optim.SGD(self.igmtf_model.parameters(), lr=self.lr)
         else:
-            raise NotImplementedError("optimizer {} is not supported!".format(optimizer))
+            raise NotImplementedError(f"optimizer {optimizer} is not supported!")
 
         self.fitted = False
         self.igmtf_model.to(self.device)
@@ -150,7 +119,7 @@ class IGMTF(Model):
         if self.loss == "mse":
             return self.mse(pred[mask], label[mask])
 
-        raise ValueError("unknown loss `%s`" % self.loss)
+        raise ValueError(f"unknown loss `{self.loss}`")
 
     def metric_fn(self, pred, label):
 
@@ -167,7 +136,7 @@ class IGMTF(Model):
         if self.metric == ("", "loss"):
             return -self.loss_fn(pred[mask], label[mask])
 
-        raise ValueError("unknown metric `%s`" % self.metric)
+        raise ValueError(f"unknown metric `{self.metric}`")
 
     def get_daily_inter(self, df, shuffle=False):
         # organize the train data into daily batches
@@ -280,7 +249,7 @@ class IGMTF(Model):
         elif self.base_model == "GRU":
             pretrained_model = GRUModel()
         else:
-            raise ValueError("unknown base model name `%s`" % self.base_model)
+            raise ValueError(f"unknown base model name `{self.base_model}`")
 
         if self.model_path is not None:
             self.logger.info("Loading pretrained model...")
@@ -379,11 +348,11 @@ class IGMTFModel(nn.Module):
                 dropout=dropout,
             )
         else:
-            raise ValueError("unknown base model name `%s`" % base_model)
+            raise ValueError(f"unknown base model name `{base_model}`")
         self.lins = nn.Sequential()
         for i in range(2):
-            self.lins.add_module("linear" + str(i), nn.Linear(hidden_size, hidden_size))
-            self.lins.add_module("leakyrelu" + str(i), nn.LeakyReLU())
+            self.lins.add_module(f"linear{str(i)}", nn.Linear(hidden_size, hidden_size))
+            self.lins.add_module(f"leakyrelu{str(i)}", nn.LeakyReLU())
         self.fc_output = nn.Linear(hidden_size * 2, hidden_size * 2)
         self.project1 = nn.Linear(hidden_size, hidden_size, bias=False)
         self.project2 = nn.Linear(hidden_size, hidden_size, bias=False)
@@ -396,8 +365,7 @@ class IGMTFModel(nn.Module):
         xy = x.mm(torch.t(y))
         x_norm = torch.sqrt(torch.sum(x * x, dim=1)).reshape(-1, 1)
         y_norm = torch.sqrt(torch.sum(y * y, dim=1)).reshape(-1, 1)
-        cos_similarity = xy / (x_norm.mm(torch.t(y_norm)) + 1e-6)
-        return cos_similarity
+        return xy / (x_norm.mm(torch.t(y_norm)) + 1e-6)
 
     def sparse_dense_mul(self, s, d):
         i = s._indices()

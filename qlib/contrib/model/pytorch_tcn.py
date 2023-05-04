@@ -79,38 +79,7 @@ class TCN(Model):
         self.seed = seed
 
         self.logger.info(
-            "TCN parameters setting:"
-            "\nd_feat : {}"
-            "\nn_chans : {}"
-            "\nkernel_size : {}"
-            "\nnum_layers : {}"
-            "\ndropout : {}"
-            "\nn_epochs : {}"
-            "\nlr : {}"
-            "\nmetric : {}"
-            "\nbatch_size : {}"
-            "\nearly_stop : {}"
-            "\noptimizer : {}"
-            "\nloss_type : {}"
-            "\nvisible_GPU : {}"
-            "\nuse_GPU : {}"
-            "\nseed : {}".format(
-                d_feat,
-                n_chans,
-                kernel_size,
-                num_layers,
-                dropout,
-                n_epochs,
-                lr,
-                metric,
-                batch_size,
-                early_stop,
-                optimizer.lower(),
-                loss,
-                GPU,
-                self.use_gpu,
-                seed,
-            )
+            f"TCN parameters setting:\nd_feat : {d_feat}\nn_chans : {n_chans}\nkernel_size : {kernel_size}\nnum_layers : {num_layers}\ndropout : {dropout}\nn_epochs : {n_epochs}\nlr : {lr}\nmetric : {metric}\nbatch_size : {batch_size}\nearly_stop : {early_stop}\noptimizer : {optimizer.lower()}\nloss_type : {loss}\nvisible_GPU : {GPU}\nuse_GPU : {self.use_gpu}\nseed : {seed}"
         )
 
         if self.seed is not None:
@@ -132,7 +101,7 @@ class TCN(Model):
         elif optimizer.lower() == "gd":
             self.train_optimizer = optim.SGD(self.tcn_model.parameters(), lr=self.lr)
         else:
-            raise NotImplementedError("optimizer {} is not supported!".format(optimizer))
+            raise NotImplementedError(f"optimizer {optimizer} is not supported!")
 
         self.fitted = False
         self.tcn_model.to(self.device)
@@ -151,7 +120,7 @@ class TCN(Model):
         if self.loss == "mse":
             return self.mse(pred[mask], label[mask])
 
-        raise ValueError("unknown loss `%s`" % self.loss)
+        raise ValueError(f"unknown loss `{self.loss}`")
 
     def metric_fn(self, pred, label):
 
@@ -160,7 +129,7 @@ class TCN(Model):
         if self.metric in ("", "loss"):
             return -self.loss_fn(pred[mask], label[mask])
 
-        raise ValueError("unknown metric `%s`" % self.metric)
+        raise ValueError(f"unknown metric `{self.metric}`")
 
     def train_epoch(self, x_train, y_train):
 

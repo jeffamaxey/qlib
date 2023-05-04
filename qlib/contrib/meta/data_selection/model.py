@@ -99,9 +99,6 @@ class MetaModelDS(MetaTaskModel):
                 opt.zero_grad()
                 loss.backward()
                 opt.step()
-            elif phase == "test":
-                pass
-
             pred_y_all.append(
                 pd.DataFrame(
                     {
@@ -131,7 +128,7 @@ class MetaModelDS(MetaTaskModel):
         """
 
         if not self.fitted:
-            for k in set(["lr", "step", "hist_step_n", "clip_method", "clip_weight", "criterion", "max_epoch"]):
+            for k in {"lr", "step", "hist_step_n", "clip_method", "clip_weight", "criterion", "max_epoch"}:
                 R.log_params(**{k: getattr(self, k)})
 
         # FIXME: get test tasks for just checking the performance
@@ -172,7 +169,4 @@ class MetaModelDS(MetaTaskModel):
         return task
 
     def inference(self, meta_dataset: MetaTaskDataset) -> List[dict]:
-        res = []
-        for mt in meta_dataset.prepare_tasks("test"):
-            res.append(self._prepare_task(mt))
-        return res
+        return [self._prepare_task(mt) for mt in meta_dataset.prepare_tasks("test")]

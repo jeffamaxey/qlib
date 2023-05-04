@@ -222,8 +222,7 @@ class DatasetH(Dataset):
         NotImplementedError:
         """
         logger = get_module_logger("DatasetH")
-        seg_kwargs = {"col_set": col_set}
-        seg_kwargs.update(kwargs)
+        seg_kwargs = {"col_set": col_set} | kwargs
         if "data_key" in getfullargspec(self.handler.fetch).args:
             seg_kwargs["data_key"] = data_key
         else:
@@ -373,9 +372,7 @@ class TSDataSampler:
         no_existing_idx = (np.iinfo(dtype).max, np.iinfo(dtype).max)
 
         max_idx = max(idx_map.keys())
-        arr_map = []
-        for i in range(max_idx + 1):
-            arr_map.append(idx_map.get(i, no_existing_idx))
+        arr_map = [idx_map.get(i, no_existing_idx) for i in range(max_idx + 1)]
         arr_map = np.array(arr_map, dtype=dtype)
         return arr_map
 
@@ -498,7 +495,7 @@ class TSDataSampler:
             # NOTE: This relies on the idx_df columns sorted in `__init__`
             j = bisect.bisect_left(self.idx_df.columns, inst)
         else:
-            raise NotImplementedError(f"This type of input is not supported")
+            raise NotImplementedError("This type of input is not supported")
         return i, j
 
     def __getitem__(self, idx: Union[int, Tuple[object, str], List[int]]):
@@ -611,8 +608,14 @@ class TSDatasetH(DatasetH):
         else:
             flt_data = None
 
-        tsds = TSDataSampler(data=data, start=start, end=end, step_len=self.step_len, dtype=dtype, flt_data=flt_data)
-        return tsds
+        return TSDataSampler(
+            data=data,
+            start=start,
+            end=end,
+            step_len=self.step_len,
+            dtype=dtype,
+            flt_data=flt_data,
+        )
 
 
 __all__ = ["Optional", "Dataset", "DatasetH"]

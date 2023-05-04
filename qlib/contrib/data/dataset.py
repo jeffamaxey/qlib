@@ -14,9 +14,11 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def _to_tensor(x):
-    if not isinstance(x, torch.Tensor):
-        return torch.tensor(x, dtype=torch.float, device=device)  # pylint: disable=E1101
-    return x
+    return (
+        x
+        if isinstance(x, torch.Tensor)
+        else torch.tensor(x, dtype=torch.float, device=device)
+    )
 
 
 def _create_ts_slices(index, seq_len):
@@ -208,7 +210,7 @@ class MTSDatasetH(DatasetH):
         elif isinstance(slc, (list, tuple)):
             start, stop = slc
         else:
-            raise NotImplementedError(f"This type of input is not supported")
+            raise NotImplementedError("This type of input is not supported")
         start_date = pd.Timestamp(fn(start))
         end_date = pd.Timestamp(fn(stop))
         obj = copy.copy(self)  # shallow copy

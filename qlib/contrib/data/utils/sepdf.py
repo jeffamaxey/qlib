@@ -46,10 +46,7 @@ class SepDataFrame:
         """
         self.join = join
 
-        if skip_align:
-            self._df_dict = df_dict
-        else:
-            self._df_dict = align_index(df_dict, join)
+        self._df_dict = df_dict if skip_align else align_index(df_dict, join)
 
     @property
     def loc(self):
@@ -103,15 +100,14 @@ class SepDataFrame:
                 if len(col_name) == 1:
                     col_name = col_name[0]
                 self._df_dict[_df_dict_key][col_name] = df
+            elif isinstance(df, pd.Series):
+                if len(col_name) == 1:
+                    col_name = col_name[0]
+                self._df_dict[_df_dict_key] = df.to_frame(col_name)
             else:
-                if isinstance(df, pd.Series):
-                    if len(col_name) == 1:
-                        col_name = col_name[0]
-                    self._df_dict[_df_dict_key] = df.to_frame(col_name)
-                else:
-                    df_copy = df.copy()  # avoid changing df
-                    df_copy.columns = pd.MultiIndex.from_tuples([(*col_name, *idx) for idx in df.columns.to_list()])
-                    self._df_dict[_df_dict_key] = df_copy
+                df_copy = df.copy()  # avoid changing df
+                df_copy.columns = pd.MultiIndex.from_tuples([(*col_name, *idx) for idx in df.columns.to_list()])
+                self._df_dict[_df_dict_key] = df_copy
 
     def __delitem__(self, item: str):
         del self._df_dict[item]
@@ -124,7 +120,7 @@ class SepDataFrame:
         return len(self._df_dict[self.join])
 
     def droplevel(self, *args, **kwargs):
-        raise NotImplementedError(f"Please implement the `droplevel` method")
+        raise NotImplementedError("Please implement the `droplevel` method")
 
     @property
     def columns(self):
@@ -165,24 +161,23 @@ class SDFLoc:
                 new_df_dict = {k: self._sdf[k] for k in args}
                 return SepDataFrame(new_df_dict, join=self.join if self.join in args else args[0], skip_align=True)
             else:
-                raise NotImplementedError(f"This type of input is not supported")
+                raise NotImplementedError("This type of input is not supported")
         elif self.axis == 0:
             return SepDataFrame(
                 {k: df.loc(axis=0)[args] for k, df in self._sdf._df_dict.items()}, join=self.join, skip_align=True
             )
         else:
             df = self._sdf
-            if isinstance(args, tuple):
-                ax0, *ax1 = args
-                if len(ax1) == 0:
-                    ax1 = None
-                if ax1 is not None:
-                    df = df.loc(axis=1)[ax1]
-                if ax0 is not None:
-                    df = df.loc(axis=0)[ax0]
-                return df
-            else:
+            if not isinstance(args, tuple):
                 return df.loc(axis=0)[args]
+            ax0, *ax1 = args
+            if len(ax1) == 0:
+                ax1 = None
+            if ax1 is not None:
+                df = df.loc(axis=1)[ax1]
+            if ax0 is not None:
+                df = df.loc(axis=0)[ax0]
+            return df
 
 
 # Patch pandas DataFrame

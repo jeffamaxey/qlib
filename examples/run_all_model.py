@@ -35,7 +35,9 @@ def only_allow_defined_args(function_to_decorate):
             valid_names.remove("self")
         for arg_name in kwargs:
             if arg_name not in valid_names:
-                raise ValueError("Unknown argument seen '%s', expected: [%s]" % (arg_name, ", ".join(valid_names)))
+                raise ValueError(
+                    f"""Unknown argument seen '{arg_name}', expected: [{", ".join(valid_names)}]"""
+                )
         return function_to_decorate(*args, **kwargs)
 
     return _return_wrapped
@@ -51,9 +53,9 @@ signal.signal(signal.SIGINT, handler)
 
 # function to calculate the mean and std of a list in the results dictionary
 def cal_mean_std(results) -> dict:
-    mean_std = dict()
+    mean_std = {}
     for fn in results:
-        mean_std[fn] = dict()
+        mean_std[fn] = {}
         for metric in results[fn]:
             mean = statistics.mean(results[fn][metric]) if len(results[fn][metric]) > 1 else results[fn][metric][0]
             std = statistics.stdev(results[fn][metric]) if len(results[fn][metric]) > 1 else 0
@@ -98,7 +100,7 @@ def execute(cmd, wait_when_err=False, raise_err=True):
 
 # function to get all the folders benchmark folder
 def get_all_folders(models, exclude) -> dict:
-    folders = dict()
+    folders = {}
     if isinstance(models, str):
         model_list = models.split(",")
         models = [m.lower().strip("[ ]") for m in model_list]
@@ -109,8 +111,7 @@ def get_all_folders(models, exclude) -> dict:
     else:
         raise ValueError("Input models type is not supported. Please provide str or list without space.")
     for f in os.scandir("benchmarks"):
-        add = xor(bool(f.name.lower() in models), bool(exclude))
-        if add:
+        if add := xor(f.name.lower() in models, bool(exclude)):
             path = Path("benchmarks") / f.name
             folders[f.name] = str(path.resolve())
     return folders
@@ -121,18 +122,15 @@ def get_all_files(folder_path, dataset, universe="") -> (str, str):
     if universe != "":
         universe = f"_{universe}"
     yaml_path = str(Path(f"{folder_path}") / f"*{dataset}{universe}.yaml")
-    req_path = str(Path(f"{folder_path}") / f"*.txt")
+    req_path = str(Path(f"{folder_path}") / "*.txt")
     yaml_file = glob.glob(yaml_path)
     req_file = glob.glob(req_path)
-    if len(yaml_file) == 0:
-        return None, None
-    else:
-        return yaml_file[0], req_file[0]
+    return (yaml_file[0], req_file[0]) if yaml_file else (None, None)
 
 
 # function to retrieve all the results
 def get_all_results(folders) -> dict:
-    results = dict()
+    results = {}
     for fn in folders:
         try:
             exp = R.get_exp(experiment_name=fn, create=False)
@@ -140,14 +138,15 @@ def get_all_results(folders) -> dict:
             # No experiment results
             continue
         recorders = exp.list_recorders()
-        result = dict()
-        result["annualized_return_with_cost"] = list()
-        result["information_ratio_with_cost"] = list()
-        result["max_drawdown_with_cost"] = list()
-        result["ic"] = list()
-        result["icir"] = list()
-        result["rank_ic"] = list()
-        result["rank_icir"] = list()
+        result = {
+            "annualized_return_with_cost": [],
+            "information_ratio_with_cost": [],
+            "max_drawdown_with_cost": [],
+            "ic": [],
+            "icir": [],
+            "rank_ic": [],
+            "rank_icir": [],
+        }
         for recorder_id in recorders:
             if recorders[recorder_id].status == "FINISHED":
                 recorder = R.get_recorder(recorder_id=recorder_id, experiment_name=fn)
@@ -168,8 +167,10 @@ def get_all_results(folders) -> dict:
 
 # function to generate and save markdown table
 def gen_and_save_md_table(metrics, dataset):
-    table = "| Model Name | Dataset | IC | ICIR | Rank IC | Rank ICIR | Annualized Return | Information Ratio | Max Drawdown |\n"
-    table += "|---|---|---|---|---|---|---|---|---|\n"
+    table = (
+        "| Model Name | Dataset | IC | ICIR | Rank IC | Rank ICIR | Annualized Return | Information Ratio | Max Drawdown |\n"
+        + "|---|---|---|---|---|---|---|---|---|\n"
+    )
     for fn in metrics:
         ic = metrics[fn]["ic"]
         icir = metrics[fn]["icir"]
@@ -213,7 +214,7 @@ class ModelRunner:
                 "class": "MLflowExpManager",
                 "module_path": "qlib.workflow.expm",
                 "kwargs": {
-                    "uri": "file:" + str(Path(os.getcwd()).resolve() / exp_folder_name),
+                    "uri": f"file:{str(Path(os.getcwd()).resolve() / exp_folder_name)}",
                     "default_exp_name": "Experiment",
                 },
             }
@@ -303,7 +304,7 @@ class ModelRunner:
         # get all folders
         folders = get_all_folders(models, exclude)
         # init error messages:
-        errors = dict()
+        errors = {}
         # run all the model for iterations
         for fn in folders:
             # get all files
@@ -318,8 +319,7 @@ class ModelRunner:
 
             # install requirements.txt
             sys.stderr.write("Installing requirements.txt...\n")
-            with open(req_path) as f:
-                content = f.read()
+            content = Path(req_path).read_text()
             if "torch" in content:
                 # automatically install pytorch according to nvidia's version
                 execute(
@@ -394,7 +394,10 @@ class ModelRunner:
             sys.stderr.write("\n")
         sys.stderr.write("\n")
         # move results folder
-        shutil.move(exp_folder_name, exp_folder_name + f"_{dataset}_{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}")
+        shutil.move(
+            exp_folder_name,
+            f"{exp_folder_name}_{dataset}_{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}",
+        )
         shutil.move("table.md", f"table_{dataset}_{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.md")
 
 

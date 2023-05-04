@@ -83,8 +83,7 @@ class ActionInterpreter(Generic[StateType, PolicyActType, ActType], Interpreter)
     @final  # no overridden
     def __call__(self, simulator_state: StateType, action: PolicyActType) -> ActType:
         self.validate(action)
-        obs = self.interpret(simulator_state, action)
-        return obs
+        return self.interpret(simulator_state, action)
 
     def validate(self, action: PolicyActType) -> None:
         """Validate whether an action belongs to the pre-defined action space."""
@@ -135,9 +134,8 @@ def _gym_space_contains(space: gym.Space, x: Any) -> None:
             except GymSpaceValidationError as e:
                 raise GymSpaceValidationError(f"Subspace of index {i} validation error.", space, x) from e
 
-    else:
-        if not space.contains(x):
-            raise GymSpaceValidationError("Validation error reported by gym.", space, x)
+    elif not space.contains(x):
+        raise GymSpaceValidationError("Validation error reported by gym.", space, x)
 
 
 class GymSpaceValidationError(Exception):

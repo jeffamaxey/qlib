@@ -74,7 +74,7 @@ class HashingStockStorage(BaseHandlerStorage):
     """
 
     def __init__(self, df):
-        self.hash_df = dict()
+        self.hash_df = {}
         self.stock_level = get_level_index(df, "instrument")
         for k, v in df.groupby(level="instrument"):
             self.hash_df[k] = v
@@ -124,11 +124,11 @@ class HashingStockStorage(BaseHandlerStorage):
         if isinstance(stock_selector, str):
             stock_selector = [stock_selector]
 
-        select_dict = dict()
-        for each_stock in sorted(stock_selector):
-            if each_stock in self.hash_df:
-                select_dict[each_stock] = self.hash_df[each_stock]
-        return select_dict
+        return {
+            each_stock: self.hash_df[each_stock]
+            for each_stock in sorted(stock_selector)
+            if each_stock in self.hash_df
+        }
 
     def fetch(
         self,
@@ -142,7 +142,7 @@ class HashingStockStorage(BaseHandlerStorage):
             fetch_col_df = fetch_df_by_col(df=stock_df, col_set=col_set)
             fetch_index_df = fetch_df_by_index(df=fetch_col_df, selector=selector, level=level, fetch_orig=fetch_orig)
             fetch_stock_df_list[_index] = fetch_index_df
-        if len(fetch_stock_df_list) == 0:
+        if not fetch_stock_df_list:
             index_names = ("instrument", "datetime") if self.stock_level == 0 else ("datetime", "instrument")
             return pd.DataFrame(
                 index=pd.MultiIndex.from_arrays([[], []], names=index_names), columns=self.columns, dtype=np.float32

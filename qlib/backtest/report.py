@@ -102,18 +102,17 @@ class PortfolioMetrics:
 
         if isinstance(benchmark, pd.Series):
             return benchmark
-        else:
-            start_time = benchmark_config.get("start_time", None)
-            end_time = benchmark_config.get("end_time", None)
+        start_time = benchmark_config.get("start_time", None)
+        end_time = benchmark_config.get("end_time", None)
 
-            if freq is None:
-                raise ValueError("benchmark freq can't be None!")
-            _codes = benchmark if isinstance(benchmark, (list, dict)) else [benchmark]
-            fields = ["$close/Ref($close,1)-1"]
-            _temp_result, _ = get_higher_eq_freq_feature(_codes, fields, start_time, end_time, freq=freq)
-            if len(_temp_result) == 0:
-                raise ValueError(f"The benchmark {_codes} does not exist. Please provide the right benchmark")
-            return _temp_result.groupby(level="datetime")[_temp_result.columns.tolist()[0]].mean().fillna(0)
+        if freq is None:
+            raise ValueError("benchmark freq can't be None!")
+        _codes = benchmark if isinstance(benchmark, (list, dict)) else [benchmark]
+        fields = ["$close/Ref($close,1)-1"]
+        _temp_result, _ = get_higher_eq_freq_feature(_codes, fields, start_time, end_time, freq=freq)
+        if len(_temp_result) == 0:
+            raise ValueError(f"The benchmark {_codes} does not exist. Please provide the right benchmark")
+        return _temp_result.groupby(level="datetime")[_temp_result.columns.tolist()[0]].mean().fillna(0)
 
     def _sample_benchmark(
         self,
@@ -294,13 +293,13 @@ class Indicator:
         self.trade_indicator_his[trade_start_time] = self.get_trade_indicator()
 
     def _update_order_trade_info(self, trade_info: List[Tuple[Order, float, float, float]]) -> None:
-        amount = dict()
-        deal_amount = dict()
-        trade_price = dict()
-        trade_value = dict()
-        trade_cost = dict()
-        trade_dir = dict()
-        pa = dict()
+        amount = {}
+        deal_amount = {}
+        trade_price = {}
+        trade_value = {}
+        trade_cost = {}
+        trade_dir = {}
+        pa = {}
 
         for order, _trade_val, _trade_cost, _trade_price in trade_info:
             amount[order.stock_id] = order.amount_delta
@@ -365,12 +364,10 @@ class Indicator:
         self.order_indicator.transfer(func_apply, "trade_dir")
 
     def _update_trade_amount(self, outer_trade_decision: BaseTradeDecision) -> None:
-        # NOTE: these indicator is designed for order execution, so the
-        decision: List[Order] = cast(List[Order], outer_trade_decision.get_decision())
-        if len(decision) == 0:
-            self.order_indicator.assign("amount", {})
-        else:
+        if decision := cast(List[Order], outer_trade_decision.get_decision()):
             self.order_indicator.assign("amount", {order.stock_id: order.amount_delta for order in decision})
+        else:
+            self.order_indicator.assign("amount", {})
 
     def _get_base_vol_pri(
         self,
@@ -405,7 +402,7 @@ class Indicator:
                 method=None,
             )
         else:
-            raise NotImplementedError(f"This type of input is not supported")
+            raise NotImplementedError("This type of input is not supported")
 
         # if there is no stock data during the time period
         if price_s is None:
@@ -413,10 +410,8 @@ class Indicator:
 
         if isinstance(price_s, (int, float, np.number)):
             price_s = idd.SingleData(price_s, [trade_start_time])
-        elif isinstance(price_s, idd.SingleData):
-            pass
-        else:
-            raise NotImplementedError(f"This type of input is not supported")
+        elif not isinstance(price_s, idd.SingleData):
+            raise NotImplementedError("This type of input is not supported")
 
         # NOTE: there are some zeros in the trading price. These cases are known meaningless
         # for aligning the previous logic, remove it.
@@ -436,7 +431,7 @@ class Indicator:
         elif agg == "twap":
             volume_s = idd.SingleData(1, price_s.index)
         else:
-            raise NotImplementedError(f"This type of input is not supported")
+            raise NotImplementedError("This type of input is not supported")
 
         assert isinstance(volume_s, idd.SingleData)
         base_volume = volume_s.sum()

@@ -44,8 +44,7 @@ def init(default_conf="client", **kwargs):
         logger.warning("Skip initialization because `skip_if_reg is True`")
         return
 
-    clear_mem_cache = kwargs.pop("clear_mem_cache", True)
-    if clear_mem_cache:
+    if clear_mem_cache := kwargs.pop("clear_mem_cache", True):
         H.clear()
     C.set(default_conf, **kwargs)
 
@@ -65,13 +64,13 @@ def init(default_conf="client", **kwargs):
         elif uri_type == C.NFS_URI:
             _mount_nfs_uri(provider_uri, C.dpm.get_data_uri(_freq), C["auto_mount"])
         else:
-            raise NotImplementedError(f"This type of URI is not supported")
+            raise NotImplementedError("This type of URI is not supported")
 
     C.register()
 
     if "flask_server" in C:
         logger.info(f"flask_server={C['flask_server']}, flask_port={C['flask_port']}")
-    logger.info("qlib successfully initialized based on %s settings." % default_conf)
+    logger.info(f"qlib successfully initialized based on {default_conf} settings.")
     data_path = {_freq: C.dpm.get_data_uri(_freq) for _freq in C.dpm.provider_uri.keys()}
     logger.info(f"data_path={data_path}")
 
@@ -83,15 +82,10 @@ def _mount_nfs_uri(provider_uri, mount_path, auto_mount: bool = False):
         raise ValueError(f"Invalid mount path: {mount_path}!")
     # FIXME: the C["provider_uri"] is modified in this function
     # If it is not modified, we can pass only  provider_uri or mount_path instead of C
-    mount_command = "sudo mount.nfs %s %s" % (provider_uri, mount_path)
+    mount_command = f"sudo mount.nfs {provider_uri} {mount_path}"
     # If the provider uri looks like this 172.23.233.89//data/csdesign'
     # It will be a nfs path. The client provider will be used
-    if not auto_mount:  # pylint: disable=R1702
-        if not Path(mount_path).exists():
-            raise FileNotFoundError(
-                f"Invalid mount path: {mount_path}! Please mount manually: {mount_command} or Set init parameter `auto_mount=True`"
-            )
-    else:
+    if auto_mount:
         # Judging system type
         sys_type = platform.system()
         if "windows" in sys_type.lower():
@@ -119,12 +113,7 @@ def _mount_nfs_uri(provider_uri, mount_path, auto_mount: bool = False):
             _check_level_num = 2
             _is_mount = False
             while _check_level_num:
-                with subprocess.Popen(
-                    'mount | grep "{}"'.format(_remote_uri),
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                ) as shell_r:
+                with subprocess.Popen(f'mount | grep "{_remote_uri}"', shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as shell_r:
                     _command_log = shell_r.stdout.readlines()
                 if len(_command_log) > 0:
                     for _c in _command_log:
@@ -165,6 +154,11 @@ def _mount_nfs_uri(provider_uri, mount_path, auto_mount: bool = False):
                     LOG.info("Mount finished")
             else:
                 LOG.warning(f"{_remote_uri} on {_mount_path} is already mounted")
+
+    elif not Path(mount_path).exists():
+        raise FileNotFoundError(
+            f"Invalid mount path: {mount_path}! Please mount manually: {mount_command} or Set init parameter `auto_mount=True`"
+        )
 
 
 def init_from_yaml_conf(conf_path, **kwargs):
@@ -288,7 +282,7 @@ def auto_init(**kwargs):
 
             # merge the arguments
             qlib_conf_update = conf.get("qlib_cfg_update", {})
-            for k, v in kwargs.items():
+            for k in kwargs:
                 if k in qlib_conf_update:
                     logger.warning(f"`qlib_conf_update` from conf_pp is override by `kwargs` on key '{k}'")
             qlib_conf_update.update(kwargs)

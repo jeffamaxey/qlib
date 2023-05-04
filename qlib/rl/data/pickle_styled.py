@@ -151,10 +151,7 @@ class SimpleIntradayBacktestData(BaseIntradayBacktestData):
         if self.deal_price_type in ("bid_or_ask", "bid_or_ask_fill"):
             if self.order_dir is None:
                 raise ValueError("Order direction cannot be none when deal_price_type is not close.")
-            if self.order_dir == OrderDir.SELL:
-                col = "$bid0"
-            else:  # BUY
-                col = "$ask0"
+            col = "$bid0" if self.order_dir == OrderDir.SELL else "$ask0"
         elif self.deal_price_type == "close":
             col = "$close0"
         else:
@@ -162,10 +159,7 @@ class SimpleIntradayBacktestData(BaseIntradayBacktestData):
         price = self.data[col]
 
         if self.deal_price_type == "bid_or_ask_fill":
-            if self.order_dir == OrderDir.SELL:
-                fill_col = "$ask0"
-            else:
-                fill_col = "$bid0"
+            fill_col = "$ask0" if self.order_dir == OrderDir.SELL else "$bid0"
             price = price.replace(0, np.nan).fillna(self.data[fill_col])
 
         return price
@@ -286,20 +280,23 @@ def load_orders(
     # Sometimes "date" are str rather than Timestamp
     order_df["datetime"] = pd.to_datetime(order_df["datetime"])
 
-    orders: List[Order] = []
-
-    for _, row in order_df.iterrows():
-        # filter out orders with amount == 0
-        if row["amount"] <= 0:
-            continue
-        orders.append(
-            Order(
-                row["instrument"],
-                row["amount"],
-                OrderDir(int(row["order_type"])),
-                row["datetime"].replace(hour=start_time.hour, minute=start_time.minute, second=start_time.second),
-                row["datetime"].replace(hour=end_time.hour, minute=end_time.minute, second=end_time.second),
+    orders: List[Order] = [
+        Order(
+            row["instrument"],
+            row["amount"],
+            OrderDir(int(row["order_type"])),
+            row["datetime"].replace(
+                hour=start_time.hour,
+                minute=start_time.minute,
+                second=start_time.second,
+            ),
+            row["datetime"].replace(
+                hour=end_time.hour,
+                minute=end_time.minute,
+                second=end_time.second,
             ),
         )
-
+        for _, row in order_df.iterrows()
+        if row["amount"] > 0
+    ]
     return orders

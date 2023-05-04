@@ -21,23 +21,14 @@ class TimeWeightMeta(SingleMetaBase):
         time_perf = time_perf.reshape(hist_step_n, time_perf.shape[0] // hist_step_n, *time_perf.shape[1:])
         time_perf = torch.mean(time_perf, dim=1, keepdim=False)
 
-        preds = []
-        for i in range(time_perf.shape[1]):
-            preds.append(self.linear(time_perf[:, i]))
+        preds = [self.linear(time_perf[:, i]) for i in range(time_perf.shape[1])]
         preds = torch.cat(preds)
         preds = preds - torch.mean(preds)  # avoid using future information
         preds = preds * self.k
         if return_preds:
-            if time_belong is None:
-                return preds
-            else:
-                return time_belong @ preds
-        else:
-            weights = preds_to_weight_with_clamp(preds, self.clip_weight, self.clip_method)
-            if time_belong is None:
-                return weights
-            else:
-                return time_belong @ weights
+            return preds if time_belong is None else time_belong @ preds
+        weights = preds_to_weight_with_clamp(preds, self.clip_weight, self.clip_method)
+        return weights if time_belong is None else time_belong @ weights
 
 
 class PredNet(nn.Module):
@@ -49,10 +40,9 @@ class PredNet(nn.Module):
 
     def get_sample_weights(self, X, time_perf, time_belong, ignore_weight=False):
         weights = torch.from_numpy(np.ones(X.shape[0])).float().to(X.device)
-        if not ignore_weight:
-            if time_perf is not None:
-                weights_t = self.twm(time_perf, time_belong)
-                weights = weights * weights_t
+        if not ignore_weight and time_perf is not None:
+            weights_t = self.twm(time_perf, time_belong)
+            weights = weights * weights_t
         return weights
 
     def forward(self, X, y, time_perf, time_belong, X_test, ignore_weight=False):

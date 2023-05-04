@@ -50,9 +50,11 @@ class User:
             :return
                 date : string (e.g '2018-10-08')
         """
-        if not self.account.last_trade_date:
-            return None
-        return str(self.account.last_trade_date.date())
+        return (
+            str(self.account.last_trade_date.date())
+            if self.account.last_trade_date
+            else None
+        )
 
     def showReport(self, benchmark="SH000905"):
         """

@@ -132,7 +132,7 @@ class Operator:
                 user_path=(pathlib.Path(path) / user_id),
                 trade_date=trade_date,
             )
-            self.logger.info("Generate order list at {} for {}".format(trade_date, user_id))
+            self.logger.info(f"Generate order list at {trade_date} for {user_id}")
             um.save_user_data(user_id)
 
     def execute(self, date, exchange_config, path):
@@ -153,9 +153,7 @@ class Operator:
             executor = SimulatorExecutor(trade_exchange=trade_exchange)
             if str(dates[0].date()) != str(pred_date.date()):
                 raise ValueError(
-                    "The account data is not newest! last trading date {}, today {}".format(
-                        dates[0].date(), trade_date.date()
-                    )
+                    f"The account data is not newest! last trading date {dates[0].date()}, today {trade_date.date()}"
                 )
 
             # load and execute the order list
@@ -167,7 +165,7 @@ class Operator:
                 user_path=(pathlib.Path(path) / user_id),
                 trade_date=trade_date,
             )
-            self.logger.info("execute order list at {} for {}".format(trade_date.date(), user_id))
+            self.logger.info(f"execute order list at {trade_date.date()} for {user_id}")
 
     def update(self, date, path, type="SIM"):
         """Update account at 'date'.
@@ -183,7 +181,7 @@ class Operator:
             'SIM': SimulatorExecutor()
         """
         if type not in ["SIM", "YC"]:
-            raise ValueError("type is invalid, {}".format(type))
+            raise ValueError(f"type is invalid, {type}")
         um, pred_date, trade_date = self.init(self.client, path, date)
         for user_id, user in um.users.items():
             dates, trade_exchange = prepare(um, trade_date, user_id)
@@ -194,9 +192,7 @@ class Operator:
             # dates[0] is the last_trading_date
             if str(dates[0].date()) > str(pred_date.date()):
                 raise ValueError(
-                    "The account data is not newest! last trading date {}, today {}".format(
-                        dates[0].date(), trade_date.date()
-                    )
+                    f"The account data is not newest! last trading date {dates[0].date()}, today {trade_date.date()}"
                 )
             # load trade info and update account
             trade_info = executor.load_trade_info_from_executed_file(
@@ -208,7 +204,7 @@ class Operator:
             portfolio_metrics = user.account.portfolio_metrics.generate_portfolio_metrics_dataframe()
             self.logger.info(portfolio_metrics)
             um.save_user_data(user_id)
-            self.logger.info("Update account state {} for {}".format(trade_date, user_id))
+            self.logger.info(f"Update account state {trade_date} for {user_id}")
 
     def simulate(self, id, config, exchange_config, start, end, path, bench="SH000905"):
         """Run the ( generate_trade_decision -> execute_order_list -> update_account) process everyday
@@ -300,9 +296,8 @@ class Operator:
         bench = D.features([bench], ["$change"]).loc[bench, "$change"]
         portfolio_metrics = um.users[id].account.portfolio_metrics.generate_portfolio_metrics_dataframe()
         portfolio_metrics["bench"] = bench
-        analysis_result = {}
         r = (portfolio_metrics["return"] - portfolio_metrics["bench"]).dropna()
-        analysis_result["excess_return_without_cost"] = risk_analysis(r)
+        analysis_result = {"excess_return_without_cost": risk_analysis(r)}
         r = (portfolio_metrics["return"] - portfolio_metrics["bench"] - portfolio_metrics["cost"]).dropna()
         analysis_result["excess_return_with_cost"] = risk_analysis(r)
         print("Result:")

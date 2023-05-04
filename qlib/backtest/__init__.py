@@ -330,7 +330,7 @@ def format_decisions(
         - <freq> := "day" | "30min" | "1min" | ...
         - <decision> := <instance of BaseTradeDecision>
     """
-    if len(decisions) == 0:
+    if not decisions:
         return None
 
     cur_freq = decisions[0].strategy.trade_calendar.get_freq()

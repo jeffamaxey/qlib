@@ -91,46 +91,7 @@ class ADD(Model):
         self.mu = mu
 
         self.logger.info(
-            "ADD parameters setting:"
-            "\nd_feat : {}"
-            "\nhidden_size : {}"
-            "\nnum_layers : {}"
-            "\ndropout : {}"
-            "\ndec_dropout : {}"
-            "\nn_epochs : {}"
-            "\nlr : {}"
-            "\nmetric : {}"
-            "\nbatch_size : {}"
-            "\nearly_stop : {}"
-            "\noptimizer : {}"
-            "\nbase_model : {}"
-            "\nmodel_path : {}"
-            "\ngamma : {}"
-            "\ngamma_clip : {}"
-            "\nmu : {}"
-            "\ndevice : {}"
-            "\nuse_GPU : {}"
-            "\nseed : {}".format(
-                d_feat,
-                hidden_size,
-                num_layers,
-                dropout,
-                dec_dropout,
-                n_epochs,
-                lr,
-                metric,
-                batch_size,
-                early_stop,
-                optimizer.lower(),
-                base_model,
-                model_path,
-                gamma,
-                gamma_clip,
-                mu,
-                self.device,
-                self.use_gpu,
-                seed,
-            )
+            f"ADD parameters setting:\nd_feat : {d_feat}\nhidden_size : {hidden_size}\nnum_layers : {num_layers}\ndropout : {dropout}\ndec_dropout : {dec_dropout}\nn_epochs : {n_epochs}\nlr : {lr}\nmetric : {metric}\nbatch_size : {batch_size}\nearly_stop : {early_stop}\noptimizer : {optimizer.lower()}\nbase_model : {base_model}\nmodel_path : {model_path}\ngamma : {gamma}\ngamma_clip : {gamma_clip}\nmu : {mu}\ndevice : {self.device}\nuse_GPU : {self.use_gpu}\nseed : {seed}"
         )
 
         if self.seed is not None:
@@ -155,7 +116,7 @@ class ADD(Model):
         elif optimizer.lower() == "gd":
             self.train_optimizer = optim.SGD(self.ADD_model.parameters(), lr=self.lr)
         else:
-            raise NotImplementedError("optimizer {} is not supported!".format(optimizer))
+            raise NotImplementedError(f"optimizer {optimizer} is not supported!")
 
         self.fitted = False
         self.ADD_model.to(self.device)
@@ -237,8 +198,7 @@ class ADD(Model):
         return daily_index, daily_count
 
     def cal_ic_metrics(self, pred, label):
-        metrics = {}
-        metrics["mse"] = -F.mse_loss(pred, label).item()
+        metrics = {"mse": -F.mse_loss(pred, label).item()}
         metrics["loss"] = metrics["mse"]
         pred = pd.Series(pred.cpu().detach().numpy())
         label = pd.Series(label.cpu().detach().numpy())
@@ -265,7 +225,7 @@ class ADD(Model):
             metrics = {}
             preds = self.ADD_model(feature)
             self.loss_fn(feature, preds, label_excess, label_market, metrics)
-            metrics.update(self.cal_ic_metrics(preds["excess"], label_excess))
+            metrics |= self.cal_ic_metrics(preds["excess"], label_excess)
             metrics_list.append(metrics)
         metrics = {}
         keys = metrics_list[0].keys()
@@ -331,7 +291,7 @@ class ADD(Model):
             if self.metric in valid_metrics:
                 val_score = valid_metrics[self.metric]
             else:
-                raise ValueError("unknown metric name `%s`" % self.metric)
+                raise ValueError(f"unknown metric name `{self.metric}`")
             if val_score > best_score:
                 best_score = val_score
                 stop_steps = 0
@@ -392,7 +352,7 @@ class ADD(Model):
         elif self.base_model == "GRU":
             pretrained_model = GRUModel()
         else:
-            raise ValueError("unknown base model name `%s`" % self.base_model)
+            raise ValueError(f"unknown base model name `{self.base_model}`")
 
         if self.model_path is not None:
             self.logger.info("Loading pretrained model...")
@@ -435,8 +395,7 @@ class ADD(Model):
 
             preds.append(pred)
 
-        r = pd.Series(np.concatenate(preds), index=index)
-        return r
+        return pd.Series(np.concatenate(preds), index=index)
 
 
 class ADDModel(nn.Module):
@@ -477,7 +436,7 @@ class ADDModel(nn.Module):
                 for _ in range(2)
             ]
         else:
-            raise ValueError("unknown base model name `%s`" % base_model)
+            raise ValueError(f"unknown base model name `{base_model}`")
         self.dec = Decoder(d_feat, 2 * hidden_size, num_layers, dec_dropout, base_model)
 
         ctx_size = hidden_size * num_layers
@@ -505,8 +464,7 @@ class ADDModel(nn.Module):
         else:
             feature_excess = hidden_excess.permute(1, 0, 2).reshape(N, -1)
             feature_market = hidden_market.permute(1, 0, 2).reshape(N, -1)
-        predicts = {}
-        predicts["excess"] = self.pred_excess(feature_excess).squeeze(1)
+        predicts = {"excess": self.pred_excess(feature_excess).squeeze(1)}
         predicts["market"] = self.pred_market(feature_market)
         predicts["adv_market"] = self.adv_market(self.before_adv_market(feature_excess))
         predicts["adv_excess"] = self.adv_excess(self.before_adv_excess(feature_market).squeeze(1))
@@ -516,7 +474,7 @@ class ADDModel(nn.Module):
             hidden = torch.cat([hidden_excess, hidden_market], -1)
         x = torch.zeros_like(x[:, 1, :])
         reconstructed_feature = []
-        for i in range(T):
+        for _ in range(T):
             x, hidden = self.dec(x, hidden)
             reconstructed_feature.append(x)
         reconstructed_feature = torch.stack(reconstructed_feature, 1)
@@ -545,7 +503,7 @@ class Decoder(nn.Module):
                 dropout=dropout,
             )
         else:
-            raise ValueError("unknown base model name `%s`" % base_model)
+            raise ValueError(f"unknown base model name `{base_model}`")
 
         self.fc = nn.Linear(hidden_size, d_feat)
 
@@ -561,15 +519,12 @@ class RevGradFunc(Function):
     @staticmethod
     def forward(ctx, input_, alpha_):
         ctx.save_for_backward(input_, alpha_)
-        output = input_
-        return output
+        return input_
 
     @staticmethod
     def backward(ctx, grad_output):  # pragma: no cover
-        grad_input = None
         _, alpha_ = ctx.saved_tensors
-        if ctx.needs_input_grad[0]:
-            grad_input = -grad_output * alpha_
+        grad_input = -grad_output * alpha_ if ctx.needs_input_grad[0] else None
         return grad_input, None
 
 

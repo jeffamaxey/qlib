@@ -237,10 +237,7 @@ class Feature(Expression):
     """
 
     def __init__(self, name=None):
-        if name:
-            self._name = name
-        else:
-            self._name = type(self).__name__
+        self._name = name if name else type(self).__name__
 
     def __str__(self):
         return "$" + self._name

@@ -56,24 +56,23 @@ def preds_to_weight_with_clamp(preds, clip_weight=None, clip_method="tanh"):
     clip_method: str
         The clip method. Current available: "clamp", "tanh", and "sigmoid".
     """
-    if clip_weight is not None:
-        if clip_method == "clamp":
-            weights = torch.exp(preds)
-            weights = weights.clamp(1.0 / clip_weight, clip_weight)
-        elif clip_method == "tanh":
-            weights = torch.exp(torch.tanh(preds) * np.log(clip_weight))
-        elif clip_method == "sigmoid":
-            # intuitively assume its sum is 1
-            if clip_weight == 0.0:
-                weights = torch.ones_like(preds)
-            else:
-                sm = nn.Sigmoid()
-                weights = sm(preds) * clip_weight  # TODO: The clip_weight is useless here.
-                weights = weights / torch.sum(weights) * weights.numel()
-        else:
-            raise ValueError("Unknown clip_method")
-    else:
+    if clip_weight is None:
         weights = torch.exp(preds)
+    elif clip_method == "clamp":
+        weights = torch.exp(preds)
+        weights = weights.clamp(1.0 / clip_weight, clip_weight)
+    elif clip_method == "tanh":
+        weights = torch.exp(torch.tanh(preds) * np.log(clip_weight))
+    elif clip_method == "sigmoid":
+        # intuitively assume its sum is 1
+        if clip_weight == 0.0:
+            weights = torch.ones_like(preds)
+        else:
+            sm = nn.Sigmoid()
+            weights = sm(preds) * clip_weight  # TODO: The clip_weight is useless here.
+            weights = weights / torch.sum(weights) * weights.numel()
+    else:
+        raise ValueError("Unknown clip_method")
     return weights
 
 
@@ -82,18 +81,20 @@ class SingleMetaBase(nn.Module):
         # method can be tanh or clamp
         super().__init__()
         self.clip_weight = clip_weight
-        if clip_method in ["tanh", "clamp"]:
-            if self.clip_weight is not None and self.clip_weight < 1.0:
-                self.clip_weight = 1 / self.clip_weight
+        if (
+            clip_method in ["tanh", "clamp"]
+            and self.clip_weight is not None
+            and self.clip_weight < 1.0
+        ):
+            self.clip_weight = 1 / self.clip_weight
         self.clip_method = clip_method
 
     def is_enabled(self):
         if self.clip_weight is None:
             return True
-        if self.clip_method == "sigmoid":
-            if self.clip_weight > 0.0:
-                return True
-        else:
-            if self.clip_weight > 1.0:
-                return True
-        return False
+        return (
+            self.clip_method == "sigmoid"
+            and self.clip_weight > 0.0
+            or self.clip_method != "sigmoid"
+            and self.clip_weight > 1.0
+        )

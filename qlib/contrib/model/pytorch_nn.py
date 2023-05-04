@@ -134,7 +134,7 @@ class DNNModelPytorch(Model):
             torch.manual_seed(self.seed)
 
         if loss not in {"mse", "binary"}:
-            raise NotImplementedError("loss {} is not supported!".format(loss))
+            raise NotImplementedError(f"loss {loss} is not supported!")
         self._scorer = mean_squared_error if loss == "mse" else roc_auc_score
 
         if init_model is None:
@@ -153,7 +153,7 @@ class DNNModelPytorch(Model):
         elif optimizer.lower() == "gd":
             self.train_optimizer = optim.SGD(self.dnn_model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         else:
-            raise NotImplementedError("optimizer {} is not supported!".format(optimizer))
+            raise NotImplementedError(f"optimizer {optimizer} is not supported!")
 
         if scheduler == "default":
             # Reduce learning rate when loss has stopped decrease

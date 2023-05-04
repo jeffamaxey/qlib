@@ -98,5 +98,8 @@ def collect_data_loop(
         for _executor in all_executors:
             key = "{}{}".format(*Freq.parse(_executor.time_per_step))
             all_indicators[key] = _executor.trade_account.get_trade_indicator().generate_trade_indicators_dataframe()
-            all_indicators[key + "_obj"] = _executor.trade_account.get_trade_indicator()
-        return_value.update({"portfolio_metrics": all_portfolio_metrics, "indicator": all_indicators})
+            all_indicators[f"{key}_obj"] = _executor.trade_account.get_trade_indicator()
+        return_value |= {
+            "portfolio_metrics": all_portfolio_metrics,
+            "indicator": all_indicators,
+        }

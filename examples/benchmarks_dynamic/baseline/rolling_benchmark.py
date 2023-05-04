@@ -36,10 +36,10 @@ class RollingBenchmark:
         if self.model_type == "gbdt":
             conf_path = DIRNAME.parent.parent / "benchmarks" / "LightGBM" / "workflow_config_lightgbm_Alpha158.yaml"
             # dump the processed data on to disk for later loading to speed up the processing
-            h_path = DIRNAME / "lightgbm_alpha158_handler_horizon{}.pkl".format(self.horizon)
+            h_path = DIRNAME / f"lightgbm_alpha158_handler_horizon{self.horizon}.pkl"
         elif self.model_type == "linear":
             conf_path = DIRNAME.parent.parent / "benchmarks" / "Linear" / "workflow_config_linear_Alpha158.yaml"
-            h_path = DIRNAME / "linear_alpha158_handler_horizon{}.pkl".format(self.horizon)
+            h_path = DIRNAME / f"linear_alpha158_handler_horizon{self.horizon}.pkl"
         else:
             raise AssertionError("Model type is not supported!")
         with conf_path.open("r") as f:
@@ -47,7 +47,7 @@ class RollingBenchmark:
 
         # modify dataset horizon
         conf["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["label"] = [
-            "Ref($close, -{}) / Ref($close, -1) - 1".format(self.horizon + 1)
+            f"Ref($close, -{self.horizon + 1}) / Ref($close, -1) - 1"
         ]
 
         task = conf["task"]
@@ -63,10 +63,9 @@ class RollingBenchmark:
 
     def create_rolling_tasks(self):
         task = self.basic_task()
-        task_l = task_generator(
+        return task_generator(
             task, RollingGen(step=self.step, trunc_days=self.horizon + 1)
-        )  # the last two days should be truncated to avoid information leakage
-        return task_l
+        )
 
     def train_rolling_tasks(self, task_l=None):
         if task_l is None:

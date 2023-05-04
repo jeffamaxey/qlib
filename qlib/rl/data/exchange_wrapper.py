@@ -101,10 +101,9 @@ def load_qlib_backtest_data(
     else:
         ticks_for_order = None  # FIXME: implement this logic
 
-    backtest_data = IntradayBacktestData(
+    return IntradayBacktestData(
         order=order,
         exchange=trade_exchange,
         ticks_index=ticks_index,
         ticks_for_order=ticks_for_order,
     )
-    return backtest_data

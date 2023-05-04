@@ -376,7 +376,7 @@ class PITProvider(abc.ABC):
         FileNotFoundError
             This exception will be raised if the queried data do not exist.
         """
-        raise NotImplementedError(f"Please implement the `period_feature` method")
+        raise NotImplementedError("Please implement the `period_feature` method")
 
 
 class ExpressionProvider(abc.ABC):
@@ -397,11 +397,13 @@ class ExpressionProvider(abc.ABC):
                 self.expression_instance_cache[field] = expression
         except NameError as e:
             get_module_logger("data").exception(
-                "ERROR: field [%s] contains invalid operator/variable [%s]" % (str(field), str(e).split()[1])
+                f"ERROR: field [{str(field)}] contains invalid operator/variable [{str(e).split()[1]}]"
             )
             raise
         except SyntaxError:
-            get_module_logger("data").exception("ERROR: field [%s] contains invalid syntax" % str(field))
+            get_module_logger("data").exception(
+                f"ERROR: field [{str(field)}] contains invalid syntax"
+            )
             raise
         return expression
 
@@ -533,8 +535,7 @@ class DatasetProvider(abc.ABC):
         if len(fields) == 0:
             raise ValueError("fields cannot be empty")
         fields = fields.copy()
-        column_names = [str(f) for f in fields]
-        return column_names
+        return [str(f) for f in fields]
 
     @staticmethod
     def parse_fields(fields):
@@ -575,13 +576,9 @@ class DatasetProvider(abc.ABC):
             )
         )
 
-        new_data = dict()
-        for inst in sorted(data.keys()):
-            if len(data[inst]) > 0:
-                # NOTE: Python version >= 3.6; in versions after python3.6, dict will always guarantee the insertion order
-                new_data[inst] = data[inst]
-
-        if len(new_data) > 0:
+        if new_data := {
+            inst: data[inst] for inst in sorted(data.keys()) if len(data[inst]) > 0
+        }:
             data = pd.concat(new_data, names=["instrument"], sort=False)
             data = DiskDatasetCache.cache_to_origin_data(data, column_names)
         else:
@@ -606,11 +603,10 @@ class DatasetProvider(abc.ABC):
         # NOTE: This place is compatible with windows, windows multi-process is spawn
         C.register_from_C(g_config)
 
-        obj = dict()
-        for field in column_names:
-            #  The client does not have expression provider, the data will be loaded from cache using static method.
-            obj[field] = ExpressionD.expression(inst, field, start_time, end_time, freq)
-
+        obj = {
+            field: ExpressionD.expression(inst, field, start_time, end_time, freq)
+            for field in column_names
+        }
         data = pd.DataFrame(obj)
         if not data.empty and not np.issubdtype(data.index.dtype, np.dtype("M")):
             # If the underlaying provides the data not in datatime formmat, we'll convert it into datetime format
@@ -715,9 +711,7 @@ class LocalInstrumentProvider(InstrumentProvider, ProviderBackendMixin):
             filter_t = getattr(F, filter_config["filter_type"]).from_config(filter_config)
             _instruments_filtered = filter_t(_instruments_filtered, start_time, end_time, freq)
         # as list
-        if as_list:
-            return list(_instruments_filtered)
-        return _instruments_filtered
+        return list(_instruments_filtered) if as_list else _instruments_filtered
 
 
 class LocalFeatureProvider(FeatureProvider, ProviderBackendMixin):
@@ -778,7 +772,7 @@ class LocalPITProvider(PITProvider):
         quarterly = field.endswith("_q")
         index_path = C.dpm.get_data_uri() / "financial" / instrument.lower() / f"{field}.index"
         data_path = C.dpm.get_data_uri() / "financial" / instrument.lower() / f"{field}.data"
-        if not (index_path.exists() and data_path.exists()):
+        if not index_path.exists() or not data_path.exists():
             raise FileNotFoundError("No file is found. Raise exception and  ")
         # NOTE: The most significant performance loss is here.
         # Does the acceleration that makes the program complicated really matters?
@@ -797,14 +791,12 @@ class LocalPITProvider(PITProvider):
         last_period = data["period"][:loc].max()  # return the latest quarter
         first_period = data["period"][:loc].min()
         period_list = get_period_list(first_period, last_period, quarterly)
-        if period is not None:
-            # NOTE: `period` has higher priority than `start_index` & `end_index`
-            if period not in period_list:
-                return pd.Series()
-            else:
-                period_list = [period]
-        else:
+        if period is None:
             period_list = period_list[max(0, len(period_list) + start_index - 1) : len(period_list) + end_index]
+        elif period not in period_list:
+            return pd.Series()
+        else:
+            period_list = [period]
         value = np.full((len(period_list),), np.nan, dtype=VALUE_DTYPE)
         for i, p in enumerate(period_list):
             # last_period_index = self.period_index[field].get(period)  # For acceleration
@@ -812,19 +804,7 @@ class LocalPITProvider(PITProvider):
                 index_path, data_path, p, cur_time_int, quarterly  # , last_period_index  # For acceleration
             )
             # self.period_index[field].update({period: now_period_index})  # For acceleration
-        # NOTE: the index is period_list; So it may result in unexpected values(e.g. nan)
-        # when calculation between different features and only part of its financial indicator is published
-        series = pd.Series(value, index=period_list, dtype=VALUE_DTYPE)
-
-        # {For acceleration
-        # if cur_index == end_index:
-        #     self.all_fields.remove(field)
-        #     if not len(self.all_fields):
-        #         del self.all_fields
-        #         del self.period_index
-        # For acceleration}
-
-        return series
+        return pd.Series(value, index=period_list, dtype=VALUE_DTYPE)
 
 
 class LocalExpressionProvider(ExpressionProvider):
@@ -916,11 +896,14 @@ class LocalDatasetProvider(DatasetProvider):
                 )
             start_time = cal[0]
             end_time = cal[-1]
-        data = self.dataset_processor(
-            instruments_d, column_names, start_time, end_time, freq, inst_processors=inst_processors
+        return self.dataset_processor(
+            instruments_d,
+            column_names,
+            start_time,
+            end_time,
+            freq,
+            inst_processors=inst_processors,
         )
-
-        return data
 
     @staticmethod
     def multi_cache_walker(instruments, fields, start_time=None, end_time=None, freq="day"):
@@ -974,8 +957,7 @@ class ClientCalendarProvider(CalendarProvider):
             msg_queue=self.queue,
             msg_proc_func=lambda response_content: [pd.Timestamp(c) for c in response_content],
         )
-        result = self.queue.get(timeout=C["timeout"])
-        return result
+        return self.queue.get(timeout=C["timeout"])
 
 
 class ClientInstrumentProvider(InstrumentProvider):
@@ -1073,23 +1055,19 @@ class ClientDatasetProvider(DatasetProvider):
             feature_uri = self.queue.get(timeout=C["timeout"])
             if isinstance(feature_uri, Exception):
                 raise feature_uri
-            else:
-                instruments_d = self.get_instruments_d(instruments, freq)
-                column_names = self.get_column_names(fields)
-                cal = Cal.calendar(start_time, end_time, freq)
-                if len(cal) == 0:
-                    return pd.DataFrame(
-                        index=pd.MultiIndex.from_arrays([[], []], names=("instrument", "datetime")),
-                        columns=column_names,
-                    )
-                start_time = cal[0]
-                end_time = cal[-1]
+            instruments_d = self.get_instruments_d(instruments, freq)
+            column_names = self.get_column_names(fields)
+            cal = Cal.calendar(start_time, end_time, freq)
+            if len(cal) == 0:
+                return pd.DataFrame(
+                    index=pd.MultiIndex.from_arrays([[], []], names=("instrument", "datetime")),
+                    columns=column_names,
+                )
+            start_time = cal[0]
+            end_time = cal[-1]
 
-                data = self.dataset_processor(instruments_d, column_names, start_time, end_time, freq, inst_processors)
-                if return_uri:
-                    return data, feature_uri
-                else:
-                    return data
+            data = self.dataset_processor(instruments_d, column_names, start_time, end_time, freq, inst_processors)
+            return (data, feature_uri) if return_uri else data
         else:
 
             """
@@ -1127,9 +1105,7 @@ class ClientDatasetProvider(DatasetProvider):
                 mnt_feature_uri = C.dpm.get_data_uri(freq).joinpath(C.dataset_cache_dir_name, feature_uri)
                 df = DiskDatasetCache.read_data_from_cache(mnt_feature_uri, start_time, end_time, fields)
                 get_module_logger("data").debug("finish slicing data")
-                if return_uri:
-                    return df, feature_uri
-                return df
+                return (df, feature_uri) if return_uri else df
             except AttributeError as attribute_e:
                 raise IOError("Unable to fetch instruments from remote server!") from attribute_e
 

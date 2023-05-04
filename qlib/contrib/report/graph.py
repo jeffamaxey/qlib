@@ -35,8 +35,8 @@ class BaseGraph:
         """
         self._df = df
 
-        self._layout = dict() if layout is None else layout
-        self._graph_kwargs = dict() if graph_kwargs is None else graph_kwargs
+        self._layout = {} if layout is None else layout
+        self._graph_kwargs = {} if graph_kwargs is None else graph_kwargs
         self._name_dict = name_dict
 
         self.data = None
@@ -119,13 +119,16 @@ class BaseGraph:
         :return:
         """
 
-        _data = [
+        return [
             self.get_instance_with_graph_parameters(
-                graph_type=self._graph_type, x=self._df.index, y=self._df[_col], name=_name, **self._graph_kwargs
+                graph_type=self._graph_type,
+                x=self._df.index,
+                y=self._df[_col],
+                name=_name,
+                **self._graph_kwargs
             )
             for _col, _name in self._name_dict.items()
         ]
-        return _data
 
     @property
     def figure(self) -> go.Figure:
@@ -171,7 +174,7 @@ class HeatmapGraph(BaseGraph):
 
         :return:
         """
-        _data = [
+        return [
             self.get_instance_with_graph_parameters(
                 graph_type=self._graph_type,
                 x=self._df.columns,
@@ -180,7 +183,6 @@ class HeatmapGraph(BaseGraph):
                 **self._graph_kwargs
             )
         ]
-        return _data
 
 
 class HistogramGraph(BaseGraph):
@@ -191,13 +193,15 @@ class HistogramGraph(BaseGraph):
 
         :return:
         """
-        _data = [
+        return [
             self.get_instance_with_graph_parameters(
-                graph_type=self._graph_type, x=self._df[_col], name=_name, **self._graph_kwargs
+                graph_type=self._graph_type,
+                x=self._df[_col],
+                name=_name,
+                **self._graph_kwargs
             )
             for _col, _name in self._name_dict.items()
         ]
-        return _data
 
 
 class SubplotsGraph:
@@ -276,7 +280,7 @@ class SubplotsGraph:
 
         self._kind_map = kind_map
         if self._kind_map is None:
-            self._kind_map = dict(kind="ScatterGraph", kwargs=dict())
+            self._kind_map = dict(kind="ScatterGraph", kwargs={})
 
         self._subplots_kwargs = subplots_kwargs
         if self._subplots_kwargs is None:
@@ -327,14 +331,15 @@ class SubplotsGraph:
         # Default cols, rows
         _cols = 2
         _rows = math.ceil(len(self._df.columns) / 2)
-        self._subplots_kwargs = dict()
-        self._subplots_kwargs["rows"] = _rows
-        self._subplots_kwargs["cols"] = _cols
-        self._subplots_kwargs["shared_xaxes"] = False
-        self._subplots_kwargs["shared_yaxes"] = False
-        self._subplots_kwargs["vertical_spacing"] = 0.3 / _rows
-        self._subplots_kwargs["print_grid"] = False
-        self._subplots_kwargs["subplot_titles"] = self._df.columns.tolist()
+        self._subplots_kwargs = {
+            "rows": _rows,
+            "cols": _cols,
+            "shared_xaxes": False,
+            "shared_yaxes": False,
+            "vertical_spacing": 0.3 / _rows,
+            "print_grid": False,
+            "subplot_titles": self._df.columns.tolist(),
+        }
 
     def _init_figure(self):
         """

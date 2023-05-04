@@ -232,7 +232,9 @@ class DataHandler(Serializable):
             try:
                 selector = slice(*selector)
             except ValueError:
-                get_module_logger("DataHandlerLP").info(f"Fail to converting to query to slice. It will used directly")
+                get_module_logger("DataHandlerLP").info(
+                    "Fail to converting to query to slice. It will used directly"
+                )
 
         if isinstance(data_storage, pd.DataFrame):
             data_df = data_storage
@@ -246,15 +248,15 @@ class DataHandler(Serializable):
                 data_df = fetch_df_by_col(data_df, col_set)
                 data_df = fetch_df_by_index(data_df, selector, level, fetch_orig=self.fetch_orig)
         elif isinstance(data_storage, BaseHandlerStorage):
-            if not data_storage.is_proc_func_supported():
-                if proc_func is not None:
-                    raise ValueError(f"proc_func is not supported by the storage {type(data_storage)}")
-                data_df = data_storage.fetch(
-                    selector=selector, level=level, col_set=col_set, fetch_orig=self.fetch_orig
-                )
-            else:
+            if data_storage.is_proc_func_supported():
                 data_df = data_storage.fetch(
                     selector=selector, level=level, col_set=col_set, fetch_orig=self.fetch_orig, proc_func=proc_func
+                )
+            elif proc_func is not None:
+                raise ValueError(f"proc_func is not supported by the storage {type(data_storage)}")
+            else:
+                data_df = data_storage.fetch(
+                    selector=selector, level=level, col_set=col_set, fetch_orig=self.fetch_orig
                 )
         else:
             raise TypeError(f"data_storage should be pd.DataFrame|HashingStockStorage, not {type(data_storage)}")
@@ -470,10 +472,7 @@ class DataHandlerLP(DataHandler):
         """
         NOTE: it will return True if `len(proc_l) == 0`
         """
-        for p in proc_l:
-            if not p.readonly():
-                return False
-        return True
+        return all(p.readonly() for p in proc_l)
 
     def process_data(self, with_fit: bool = False):
         """
@@ -520,7 +519,7 @@ class DataHandlerLP(DataHandler):
             # based on `infer_df` and append the processor
             _learn_df = _infer_df
         else:
-            raise NotImplementedError(f"This type of input is not supported")
+            raise NotImplementedError("This type of input is not supported")
         if not self._is_proc_readonly(self.learn_processors):  # avoid modifying the original  data
             _learn_df = _learn_df.copy()
         # 2) process
@@ -578,7 +577,7 @@ class DataHandlerLP(DataHandler):
             elif init_type == DataHandlerLP.IT_FIT_SEQ:
                 self.fit_process_data()
             else:
-                raise NotImplementedError(f"This type of input is not supported")
+                raise NotImplementedError("This type of input is not supported")
 
         # TODO: Be able to cache handler data. Save the memory for data processing
 
@@ -587,8 +586,7 @@ class DataHandlerLP(DataHandler):
             raise AttributeError(
                 "DataHandlerLP has not attribute _data, please set drop_raw = False if you want to use raw data"
             )
-        df = getattr(self, self.ATTR_MAP[data_key])
-        return df
+        return getattr(self, self.ATTR_MAP[data_key])
 
     def fetch(
         self,

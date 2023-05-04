@@ -191,7 +191,7 @@ class TopkDropoutStrategy(BaseSignalStrategy):
             except ValueError:
                 today = candi
         else:
-            raise NotImplementedError(f"This type of input is not supported")
+            raise NotImplementedError("This type of input is not supported")
         # combine(new stocks + last stocks),  we will drop stocks from this list
         # In case of dropping higher score stock and buying lower score stock.
         comb = pred_score.reindex(last.union(pd.Index(today))).sort_values(ascending=False).index
@@ -206,7 +206,7 @@ class TopkDropoutStrategy(BaseSignalStrategy):
             except ValueError:  # No enough candidates
                 sell = candi
         else:
-            raise NotImplementedError(f"This type of input is not supported")
+            raise NotImplementedError("This type of input is not supported")
 
         # Get the stock list we really want to buy
         buy = today[: len(sell) + self.topk - len(last)]
@@ -490,7 +490,7 @@ class EnhancedIndexingStrategy(WeightStrategyBase):
 
         if self.verbose:
             self.logger.info("trade date: {:%Y-%m-%d}".format(trade_date))
-            self.logger.info("number of holding stocks: {}".format(len(target_weight_position)))
+            self.logger.info(f"number of holding stocks: {len(target_weight_position)}")
             self.logger.info("total holding weight: {:.6f}".format(weight.sum()))
 
         return target_weight_position

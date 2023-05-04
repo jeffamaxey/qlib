@@ -5,6 +5,7 @@
     - To show the data modules of Qlib is Serializable, users can dump processed data to disk to avoid duplicated data preprocessing
 """
 
+
 from copy import deepcopy
 from pathlib import Path
 import pickle
@@ -33,7 +34,7 @@ if __name__ == "__main__":
 
     # 1) without using processed data in memory
     with TimeInspector.logt("The original time without reusing processed data in memory:"):
-        for i in range(repeat):
+        for _ in range(repeat):
             task_train(task_config["task"], experiment_name=exp_name)
 
     # 2) prepare processed data in memory.
@@ -49,7 +50,7 @@ if __name__ == "__main__":
     with TimeInspector.logt("The time with reusing processed data in memory:"):
         # this will save the time to reload and process data from disk(in `DataHandlerLP`)
         # It still takes a lot of time in the backtest phase
-        for i in range(repeat):
+        for _ in range(repeat):
             task_train(new_task, experiment_name=exp_name)
 
     # 4) User can change other parts exclude processed data in memory(handler)

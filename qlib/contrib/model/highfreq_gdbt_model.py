@@ -18,8 +18,7 @@ class HFLGBModel(ModelFT, LightGBMFInt):
     def __init__(self, loss="mse", **kwargs):
         if loss not in {"mse", "binary"}:
             raise NotImplementedError
-        self.params = {"objective": loss, "verbosity": -1}
-        self.params.update(kwargs)
+        self.params = {"objective": loss, "verbosity": -1} | kwargs
         self.model = None
 
     def _cal_signal_metrics(self, y_test, l_cut, r_cut):
@@ -74,9 +73,9 @@ class HFLGBModel(ModelFT, LightGBMFInt):
         print("High frequency signal test")
         print("===============================")
         print("Test set precision: ")
-        print("Positive precision: {}, Negative precision: {}".format(up_p, down_p))
+        print(f"Positive precision: {up_p}, Negative precision: {down_p}")
         print("Test Alpha Average in test set: ")
-        print("Positive average alpha: {}, Negative average alpha: {}".format(up_a, down_a))
+        print(f"Positive average alpha: {up_a}, Negative average alpha: {down_a}")
 
     def _prepare_data(self, dataset: DatasetH):
         df_train, df_valid = dataset.prepare(
@@ -116,7 +115,7 @@ class HFLGBModel(ModelFT, LightGBMFInt):
         evals_result=None,
     ):
         if evals_result is None:
-            evals_result = dict()
+            evals_result = {}
         dtrain, dvalid = self._prepare_data(dataset)
         early_stopping_callback = lgb.early_stopping(early_stopping_rounds)
         verbose_eval_callback = lgb.log_evaluation(period=verbose_eval)

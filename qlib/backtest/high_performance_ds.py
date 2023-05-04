@@ -33,7 +33,7 @@ class BaseQuote:
             all stock codes
         """
 
-        raise NotImplementedError(f"Please implement the `get_all_stock` method")
+        raise NotImplementedError("Please implement the `get_all_stock` method")
 
     def get_data(
         self,
@@ -97,15 +97,16 @@ class BaseQuote:
             - The `method` returns None
         """
 
-        raise NotImplementedError(f"Please implement the `get_data` method")
+        raise NotImplementedError("Please implement the `get_data` method")
 
 
 class PandasQuote(BaseQuote):
     def __init__(self, quote_df: pd.DataFrame, freq: str) -> None:
         super().__init__(quote_df=quote_df, freq=freq)
-        quote_dict = {}
-        for stock_id, stock_val in quote_df.groupby(level="instrument"):
-            quote_dict[stock_id] = stock_val.droplevel(level="instrument")
+        quote_dict = {
+            stock_id: stock_val.droplevel(level="instrument")
+            for stock_id, stock_val in quote_df.groupby(level="instrument")
+        }
         self.data = quote_dict
 
     def get_all_stock(self):
@@ -122,7 +123,9 @@ class PandasQuote(BaseQuote):
         elif isinstance(stock_data, pd.Series):
             return idd.SingleData(stock_data)
         else:
-            raise ValueError(f"stock data from resam_ts_data must be a number, pd.Series or pd.DataFrame")
+            raise ValueError(
+                "stock data from resam_ts_data must be a number, pd.Series or pd.DataFrame"
+            )
 
 
 class NumpyQuote(BaseQuote):
@@ -184,22 +187,19 @@ class NumpyQuote(BaseQuote):
     def _agg_data(data: IndexData, method: str) -> Union[IndexData, np.ndarray, None]:
         """Agg data by specific method."""
         # FIXME: why not call the method of data directly?
-        if method == "sum":
-            return np.nansum(data)
-        elif method == "mean":
-            return np.nanmean(data)
+        if method == "all":
+            return data.all()
         elif method == "last":
             # FIXME: I've never seen that this method was called.
             # Please merge it with "ts_data_last"
             return data[-1]
-        elif method == "all":
-            return data.all()
+        elif method == "mean":
+            return np.nanmean(data)
+        elif method == "sum":
+            return np.nansum(data)
         elif method == "ts_data_last":
             valid_data = data.loc[~data.isna().data.astype(bool)]
-            if len(valid_data) == 0:
-                return None
-            else:
-                return valid_data.iloc[-1]
+            return None if len(valid_data) == 0 else valid_data.iloc[-1]
         else:
             raise ValueError(f"{method} is not supported")
 
@@ -225,74 +225,74 @@ class BaseSingleMetric:
                 SZ300692    NaN
                 SZ300719    NaN,
         """
-        raise NotImplementedError(f"Please implement the `__init__` method")
+        raise NotImplementedError("Please implement the `__init__` method")
 
     def __add__(self, other: Union[BaseSingleMetric, int, float]) -> BaseSingleMetric:
-        raise NotImplementedError(f"Please implement the `__add__` method")
+        raise NotImplementedError("Please implement the `__add__` method")
 
     def __radd__(self, other: Union[BaseSingleMetric, int, float]) -> BaseSingleMetric:
         return self + other
 
     def __sub__(self, other: Union[BaseSingleMetric, int, float]) -> BaseSingleMetric:
-        raise NotImplementedError(f"Please implement the `__sub__` method")
+        raise NotImplementedError("Please implement the `__sub__` method")
 
     def __rsub__(self, other: Union[BaseSingleMetric, int, float]) -> BaseSingleMetric:
-        raise NotImplementedError(f"Please implement the `__rsub__` method")
+        raise NotImplementedError("Please implement the `__rsub__` method")
 
     def __mul__(self, other: Union[BaseSingleMetric, int, float]) -> BaseSingleMetric:
-        raise NotImplementedError(f"Please implement the `__mul__` method")
+        raise NotImplementedError("Please implement the `__mul__` method")
 
     def __truediv__(self, other: Union[BaseSingleMetric, int, float]) -> BaseSingleMetric:
-        raise NotImplementedError(f"Please implement the `__truediv__` method")
+        raise NotImplementedError("Please implement the `__truediv__` method")
 
     def __eq__(self, other: object) -> BaseSingleMetric:
-        raise NotImplementedError(f"Please implement the `__eq__` method")
+        raise NotImplementedError("Please implement the `__eq__` method")
 
     def __gt__(self, other: Union[BaseSingleMetric, int, float]) -> BaseSingleMetric:
-        raise NotImplementedError(f"Please implement the `__gt__` method")
+        raise NotImplementedError("Please implement the `__gt__` method")
 
     def __lt__(self, other: Union[BaseSingleMetric, int, float]) -> BaseSingleMetric:
-        raise NotImplementedError(f"Please implement the `__lt__` method")
+        raise NotImplementedError("Please implement the `__lt__` method")
 
     def __len__(self) -> int:
-        raise NotImplementedError(f"Please implement the `__len__` method")
+        raise NotImplementedError("Please implement the `__len__` method")
 
     def sum(self) -> float:
-        raise NotImplementedError(f"Please implement the `sum` method")
+        raise NotImplementedError("Please implement the `sum` method")
 
     def mean(self) -> float:
-        raise NotImplementedError(f"Please implement the `mean` method")
+        raise NotImplementedError("Please implement the `mean` method")
 
     def count(self) -> int:
         """Return the count of the single metric, NaN is not included."""
 
-        raise NotImplementedError(f"Please implement the `count` method")
+        raise NotImplementedError("Please implement the `count` method")
 
     def abs(self) -> BaseSingleMetric:
-        raise NotImplementedError(f"Please implement the `abs` method")
+        raise NotImplementedError("Please implement the `abs` method")
 
     @property
     def empty(self) -> bool:
         """If metric is empty, return True."""
 
-        raise NotImplementedError(f"Please implement the `empty` method")
+        raise NotImplementedError("Please implement the `empty` method")
 
     def add(self, other: BaseSingleMetric, fill_value: float = None) -> BaseSingleMetric:
         """Replace np.NaN with fill_value in two metrics and add them."""
 
-        raise NotImplementedError(f"Please implement the `add` method")
+        raise NotImplementedError("Please implement the `add` method")
 
     def replace(self, replace_dict: dict) -> BaseSingleMetric:
         """Replace the value of metric according to replace_dict."""
 
-        raise NotImplementedError(f"Please implement the `replace` method")
+        raise NotImplementedError("Please implement the `replace` method")
 
     def apply(self, func: Callable) -> BaseSingleMetric:
         """Replace the value of metric with func (metric).
         Currently, the func is only qlib/backtest/order/Order.parse_dir.
         """
 
-        raise NotImplementedError(f"Please implement the 'apply' method")
+        raise NotImplementedError("Please implement the 'apply' method")
 
 
 class BaseOrderIndicator:
@@ -329,7 +329,7 @@ class BaseOrderIndicator:
                 SZ300719    NaN,
         """
 
-        raise NotImplementedError(f"Please implement the 'assign' method")
+        raise NotImplementedError("Please implement the 'assign' method")
 
     def transfer(self, func: Callable, new_col: str = None) -> Optional[BaseSingleMetric]:
         """compute new metric with existing metrics.
@@ -353,11 +353,10 @@ class BaseOrderIndicator:
         func_sig = inspect.signature(func).parameters.keys()
         func_kwargs = {sig: self.data[sig] for sig in func_sig}
         tmp_metric = func(**func_kwargs)
-        if new_col is not None:
-            self.data[new_col] = tmp_metric
-            return None
-        else:
+        if new_col is None:
             return tmp_metric
+        self.data[new_col] = tmp_metric
+        return None
 
     def get_metric_series(self, metric: str) -> pd.Series:
         """return the single metric with pd.Series format.
@@ -374,7 +373,7 @@ class BaseOrderIndicator:
             If there is no metric name in the data, return pd.Series().
         """
 
-        raise NotImplementedError(f"Please implement the 'get_metric_series' method")
+        raise NotImplementedError("Please implement the 'get_metric_series' method")
 
     def get_index_data(self, metric: str) -> SingleData:
         """get one metric with the format of SingleData
@@ -390,7 +389,7 @@ class BaseOrderIndicator:
             one metric with the format of SingleData
         """
 
-        raise NotImplementedError(f"Please implement the 'get_index_data' method")
+        raise NotImplementedError("Please implement the 'get_index_data' method")
 
     @staticmethod
     def sum_all_indicators(
@@ -415,7 +414,7 @@ class BaseOrderIndicator:
             fill np.NaN with value. By default None.
         """
 
-        raise NotImplementedError(f"Please implement the 'sum_all_indicators' method")
+        raise NotImplementedError("Please implement the 'sum_all_indicators' method")
 
     def to_series(self) -> Dict[Text, pd.Series]:
         """return the metrics as pandas series
@@ -430,7 +429,7 @@ class BaseOrderIndicator:
                 ...
          }
         """
-        raise NotImplementedError(f"Please implement the `to_series` method")
+        raise NotImplementedError("Please implement the `to_series` method")
 
 
 class SingleMetric(BaseSingleMetric):
@@ -514,7 +513,7 @@ class PandasSingleMetric(SingleMetric):
         elif isinstance(metric, pd.Series):
             self.metric = metric
         else:
-            raise ValueError(f"metric must be dict or pd.Series")
+            raise ValueError("metric must be dict or pd.Series")
 
     def sum(self):
         return self.metric.sum()
@@ -574,10 +573,7 @@ class PandasOrderIndicator(BaseOrderIndicator):
             return idd.SingleData()
 
     def get_metric_series(self, metric: str) -> Union[pd.Series]:
-        if metric in self.data:
-            return self.data[metric].metric
-        else:
-            return pd.Series()
+        return self.data[metric].metric if metric in self.data else pd.Series()
 
     def to_series(self):
         return {k: v.metric for k, v in self.data.items()}
@@ -616,19 +612,13 @@ class NumpyOrderIndicator(BaseOrderIndicator):
         self.data[col] = idd.SingleData(metric)
 
     def get_index_data(self, metric: str) -> SingleData:
-        if metric in self.data:
-            return self.data[metric]
-        else:
-            return idd.SingleData()
+        return self.data[metric] if metric in self.data else idd.SingleData()
 
     def get_metric_series(self, metric: str) -> Union[pd.Series]:
         return self.data[metric].to_series()
 
     def to_series(self) -> Dict[str, pd.Series]:
-        tmp_metric_dict = {}
-        for metric in self.data:
-            tmp_metric_dict[metric] = self.get_metric_series(metric)
-        return tmp_metric_dict
+        return {metric: self.get_metric_series(metric) for metric in self.data}
 
     @staticmethod
     def sum_all_indicators(

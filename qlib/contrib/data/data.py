@@ -36,20 +36,19 @@ class ArcticFeatureProvider(FeatureProvider):
             arctic = Arctic(client)
 
             if freq not in arctic.list_libraries():
-                raise ValueError("lib {} not in arctic".format(freq))
+                raise ValueError(f"lib {freq} not in arctic")
 
             if instrument not in arctic[freq].list_symbols():
                 # instruments does not exist
                 return pd.Series()
-            else:
-                df = arctic[freq].read(instrument, columns=[field], chunk_range=(start_index, end_index))
-                s = df[field]
+            df = arctic[freq].read(instrument, columns=[field], chunk_range=(start_index, end_index))
+            s = df[field]
 
-                if not s.empty:
-                    s = pd.concat(
-                        [
-                            s.between_time(time_tuple[0], time_tuple[1])
-                            for time_tuple in self.market_transaction_time_list
-                        ]
-                    )
-                return s
+            if not s.empty:
+                s = pd.concat(
+                    [
+                        s.between_time(time_tuple[0], time_tuple[1])
+                        for time_tuple in self.market_transaction_time_list
+                    ]
+                )
+            return s

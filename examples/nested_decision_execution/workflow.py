@@ -310,9 +310,12 @@ class NestedDecisionExecutionWorkflow:
         for check_key in "account", "total_turnover", "total_cost":
             check_key = "total_cost"
 
-            acc_dict = {}
-            for freq in ["30minute", "5minute", "1day"]:
-                acc_dict[freq] = rec.load_object(f"portfolio_analysis/report_normal_{freq}.pkl")[check_key]
+            acc_dict = {
+                freq: rec.load_object(
+                    f"portfolio_analysis/report_normal_{freq}.pkl"
+                )[check_key]
+                for freq in ["30minute", "5minute", "1day"]
+            }
             acc_df = pd.DataFrame(acc_dict)
             acc_resam = acc_df.resample("1d").last().dropna()
             assert (acc_resam["30minute"] == acc_resam["1day"]).all()

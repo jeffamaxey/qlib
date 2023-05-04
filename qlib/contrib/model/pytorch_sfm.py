@@ -168,8 +168,7 @@ class SFM_Model(nn.Module):
         ]
 
     def get_constants(self, x):
-        constants = []
-        constants.append([torch.tensor(1.0).to(self.device) for _ in range(6)])
+        constants = [[torch.tensor(1.0).to(self.device) for _ in range(6)]]
         constants.append([torch.tensor(1.0).to(self.device) for _ in range(7)])
         array = np.array([float(ii) / self.freq_dim for ii in range(self.freq_dim)])
         constants.append(torch.tensor(array).to(self.device))
@@ -237,42 +236,7 @@ class SFM(Model):
         self.seed = seed
 
         self.logger.info(
-            "SFM parameters setting:"
-            "\nd_feat : {}"
-            "\nhidden_size : {}"
-            "\noutput_size : {}"
-            "\nfrequency_dimension : {}"
-            "\ndropout_W: {}"
-            "\ndropout_U: {}"
-            "\nn_epochs : {}"
-            "\nlr : {}"
-            "\nmetric : {}"
-            "\nbatch_size : {}"
-            "\nearly_stop : {}"
-            "\neval_steps : {}"
-            "\noptimizer : {}"
-            "\nloss_type : {}"
-            "\ndevice : {}"
-            "\nuse_GPU : {}"
-            "\nseed : {}".format(
-                d_feat,
-                hidden_size,
-                output_dim,
-                freq_dim,
-                dropout_W,
-                dropout_U,
-                n_epochs,
-                lr,
-                metric,
-                batch_size,
-                early_stop,
-                eval_steps,
-                optimizer.lower(),
-                loss,
-                self.device,
-                self.use_gpu,
-                seed,
-            )
+            f"SFM parameters setting:\nd_feat : {d_feat}\nhidden_size : {hidden_size}\noutput_size : {output_dim}\nfrequency_dimension : {freq_dim}\ndropout_W: {dropout_W}\ndropout_U: {dropout_U}\nn_epochs : {n_epochs}\nlr : {lr}\nmetric : {metric}\nbatch_size : {batch_size}\nearly_stop : {early_stop}\neval_steps : {eval_steps}\noptimizer : {optimizer.lower()}\nloss_type : {loss}\ndevice : {self.device}\nuse_GPU : {self.use_gpu}\nseed : {seed}"
         )
 
         if self.seed is not None:
@@ -296,7 +260,7 @@ class SFM(Model):
         elif optimizer.lower() == "gd":
             self.train_optimizer = optim.SGD(self.sfm_model.parameters(), lr=self.lr)
         else:
-            raise NotImplementedError("optimizer {} is not supported!".format(optimizer))
+            raise NotImplementedError(f"optimizer {optimizer} is not supported!")
 
         self.fitted = False
         self.sfm_model.to(self.device)
@@ -428,7 +392,7 @@ class SFM(Model):
         if self.loss == "mse":
             return self.mse(pred[mask], label[mask])
 
-        raise ValueError("unknown loss `%s`" % self.loss)
+        raise ValueError(f"unknown loss `{self.loss}`")
 
     def metric_fn(self, pred, label):
 
@@ -437,7 +401,7 @@ class SFM(Model):
         if self.metric in ("", "loss"):
             return -self.loss_fn(pred[mask], label[mask])
 
-        raise ValueError("unknown metric `%s`" % self.metric)
+        raise ValueError(f"unknown metric `{self.metric}`")
 
     def predict(self, dataset: DatasetH, segment: Union[Text, slice] = "test"):
         if not self.fitted:

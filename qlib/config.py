@@ -301,11 +301,10 @@ class QlibConfig(Config):
         def format_provider_uri(provider_uri: Union[str, dict, Path]) -> dict:
             if provider_uri is None:
                 raise ValueError("provider_uri cannot be None")
-            if isinstance(provider_uri, (str, dict, Path)):
-                if not isinstance(provider_uri, dict):
-                    provider_uri = {QlibConfig.DEFAULT_FREQ: provider_uri}
-            else:
+            if not isinstance(provider_uri, (str, dict, Path)):
                 raise TypeError(f"provider_uri does not support {type(provider_uri)}")
+            if not isinstance(provider_uri, dict):
+                provider_uri = {QlibConfig.DEFAULT_FREQ: provider_uri}
             for freq, _uri in provider_uri.items():
                 if QlibConfig.DataPathManager.get_uri_type(_uri) == QlibConfig.LOCAL_URI:
                     provider_uri[freq] = str(Path(_uri).expanduser().resolve())
@@ -341,7 +340,7 @@ class QlibConfig(Config):
                     return Path(f"{_path}:\\") if ":" not in _path else Path(_path)
                 return Path(self.mount_path[freq])
             else:
-                raise NotImplementedError(f"This type of uri is not supported")
+                raise NotImplementedError("This type of uri is not supported")
 
     def set_mode(self, mode):
         # raise KeyError
@@ -402,10 +401,7 @@ class QlibConfig(Config):
 
         self.reset()
 
-        _logging_config = kwargs.get("logging_config", self.logging_config)
-
-        # set global config
-        if _logging_config:
+        if _logging_config := kwargs.get("logging_config", self.logging_config):
             set_log_with_config(_logging_config)
 
         # FIXME: this logger ignored the level in config
@@ -417,28 +413,29 @@ class QlibConfig(Config):
 
         for k, v in kwargs.items():
             if k not in self:
-                logger.warning("Unrecognized config %s" % k)
+                logger.warning(f"Unrecognized config {k}")
             self[k] = v
 
         self.resolve_path()
 
-        if not (self["expression_cache"] is None and self["dataset_cache"] is None):
-            # check redis
-            if not can_use_cache():
-                log_str = ""
-                # check expression cache
-                if self.is_depend_redis(self["expression_cache"]):
-                    log_str += self["expression_cache"]
-                    self["expression_cache"] = None
-                # check dataset cache
-                if self.is_depend_redis(self["dataset_cache"]):
-                    log_str += f" and {self['dataset_cache']}" if log_str else self["dataset_cache"]
-                    self["dataset_cache"] = None
-                if log_str:
-                    logger.warning(
-                        f"redis connection failed(host={self['redis_host']} port={self['redis_port']}), "
-                        f"{log_str} will not be used!"
-                    )
+        if (
+            self["expression_cache"] is not None
+            or self["dataset_cache"] is not None
+        ) and not can_use_cache():
+            log_str = ""
+            # check expression cache
+            if self.is_depend_redis(self["expression_cache"]):
+                log_str += self["expression_cache"]
+                self["expression_cache"] = None
+            # check dataset cache
+            if self.is_depend_redis(self["dataset_cache"]):
+                log_str += f" and {self['dataset_cache']}" if log_str else self["dataset_cache"]
+                self["dataset_cache"] = None
+            if log_str:
+                logger.warning(
+                    f"redis connection failed(host={self['redis_host']} port={self['redis_port']}), "
+                    f"{log_str} will not be used!"
+                )
 
     def register(self):
         from .utils import init_instance_by_config  # pylint: disable=C0415

@@ -96,7 +96,11 @@ class TestClass(unittest.TestCase):
 
     @staticmethod
     def total_func(name, method):
-        return "TResample(" + "+".join([f"${name}{i}" for i in range(1, 11)]) + ",'1min', '{}')".format(method)
+        return (
+            "TResample("
+            + "+".join([f"${name}{i}" for i in range(1, 11)])
+            + f",'1min', '{method}')"
+        )
 
     def test_exp_01(self):
         exprs = []

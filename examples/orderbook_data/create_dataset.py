@@ -51,9 +51,7 @@ def get_library_name(doc_type):
 def is_stock(exchange_place, code):
     if exchange_place == "SH" and code[0] != "6":
         return False
-    if exchange_place == "SZ" and code[0] != "0" and code[:2] != "30":
-        return False
-    return True
+    return exchange_place != "SZ" or code[0] == "0" or code[:2] == "30"
 
 
 def add_one_stock_daily_data(filepath, type, exchange_place, arc, date):
@@ -77,11 +75,15 @@ def add_one_stock_daily_data(filepath, type, exchange_place, arc, date):
         hms = str(hms)
         if hms[0] == "1":  # >=10,
             return (
-                "-".join([day[0:4], day[4:6], day[6:8]]) + " " + ":".join([hms[:2], hms[2:4], hms[4:6] + "." + hms[6:]])
+                "-".join([day[:4], day[4:6], day[6:8]])
+                + " "
+                + ":".join([hms[:2], hms[2:4], hms[4:6] + "." + hms[6:]])
             )
         else:
             return (
-                "-".join([day[0:4], day[4:6], day[6:8]]) + " " + ":".join([hms[:1], hms[1:3], hms[3:5] + "." + hms[5:]])
+                "-".join([day[:4], day[4:6], day[6:8]])
+                + " "
+                + ":".join([hms[:1], hms[1:3], hms[3:5] + "." + hms[5:]])
             )
 
     ## Discard the entire row if wrong data timestamp encoutered.
@@ -95,7 +97,7 @@ def add_one_stock_daily_data(filepath, type, exchange_place, arc, date):
 
     # to-do: writting to logs
 
-    if len(error_index_list) > 0:
+    if error_index_list:
         print("error: {}, {}".format(filepath, len(error_index_list)))
 
     df = df.drop(error_index_list)
@@ -112,10 +114,15 @@ def add_one_stock_daily_data(filepath, type, exchange_place, arc, date):
     if str.lower(type) == "orderqueue":
         ## extract ab1~ab50
         df["ab"] = [
-            ",".join([str(int(row["ab" + str(i + 1)])) for i in range(0, row["ab_items"])])
+            ",".join(
+                [
+                    str(int(row[f"ab{str(i + 1)}"]))
+                    for i in range(0, row["ab_items"])
+                ]
+            )
             for timestamp, row in df.iterrows()
         ]
-        df = df.drop(columns=["ab" + str(i) for i in range(1, 51)])
+        df = df.drop(columns=[f"ab{str(i)}" for i in range(1, 51)])
 
     type = get_library_name(type)
     # arc.initialize_library(type, lib_type=CHUNK_STORE)
@@ -139,20 +146,16 @@ def add_one_stock_daily_data_wrapper(filepath, type, exchange_place, index, date
     arc = Arctic(ARCTIC_SRV)
     try:
         if index % 100 == 0:
-            print("index = {}, filepath = {}".format(index, filepath))
+            print(f"index = {index}, filepath = {filepath}")
         error_index_list = add_one_stock_daily_data(filepath, type, exchange_place, arc, date)
         if error_index_list is not None and len(error_index_list) > 0:
-            f = open(os.path.join(LOG_FILE_PATH, "temp_timestamp_error_{0}_{1}_{2}.txt".format(pid, date, type)), "a+")
-            f.write("{}, {}, {}\n".format(filepath, error_index_list, exchange_place + "_" + code))
-            f.close()
-
+            with open(os.path.join(LOG_FILE_PATH, "temp_timestamp_error_{0}_{1}_{2}.txt".format(pid, date, type)), "a+") as f:
+                f.write(f'{filepath}, {error_index_list}, {exchange_place + "_" + code}\n')
     except Exception as e:
         info = traceback.format_exc()
-        print("error:" + str(e))
-        f = open(os.path.join(LOG_FILE_PATH, "temp_fail_{0}_{1}_{2}.txt".format(pid, date, type)), "a+")
-        f.write("fail:" + str(filepath) + "\n" + str(e) + "\n" + str(info) + "\n")
-        f.close()
-
+        print(f"error:{str(e)}")
+        with open(os.path.join(LOG_FILE_PATH, "temp_fail_{0}_{1}_{2}.txt".format(pid, date, type)), "a+") as f:
+            f.write(f"fail:{str(filepath)}" + "\n" + str(e) + "\n" + str(info) + "\n")
     finally:
         arc.reset()
 
@@ -161,17 +164,19 @@ def add_data(tick_date, doc_type, stock_name_dict):
     pid = os.getpid()
 
     if doc_type not in DOC_TYPE:
-        print("doc_type not in {}".format(DOC_TYPE))
+        print(f"doc_type not in {DOC_TYPE}")
         return
     try:
         begin_time = time.time()
-        os.system(f"cp {DATABASE_PATH}/{tick_date + '_{}.tar.gz'.format(doc_type)} {DATA_PATH}/")
+        os.system(
+            f"cp {DATABASE_PATH}/{tick_date + f'_{doc_type}.tar.gz'} {DATA_PATH}/"
+        )
 
         os.system(
-            f"tar -xvzf {DATA_PATH}/{tick_date + '_{}.tar.gz'.format(doc_type)} -C {DATA_PATH}/ {tick_date + '_' + doc_type}/SH"
+            f"tar -xvzf {DATA_PATH}/{tick_date + f'_{doc_type}.tar.gz'} -C {DATA_PATH}/ {tick_date + '_' + doc_type}/SH"
         )
         os.system(
-            f"tar -xvzf {DATA_PATH}/{tick_date + '_{}.tar.gz'.format(doc_type)} -C {DATA_PATH}/ {tick_date + '_' + doc_type}/SZ"
+            f"tar -xvzf {DATA_PATH}/{tick_date + f'_{doc_type}.tar.gz'} -C {DATA_PATH}/ {tick_date + '_' + doc_type}/SZ"
         )
         os.system(f"chmod 777 {DATA_PATH}")
         os.system(f"chmod 777 {DATA_PATH}/{tick_date + '_' + doc_type}")
@@ -180,7 +185,7 @@ def add_data(tick_date, doc_type, stock_name_dict):
         os.system(f"chmod 777 {DATA_PATH}/{tick_date + '_' + doc_type}/SH/{tick_date}")
         os.system(f"chmod 777 {DATA_PATH}/{tick_date + '_' + doc_type}/SZ/{tick_date}")
 
-        print("tick_date={}".format(tick_date))
+        print(f"tick_date={tick_date}")
 
         temp_data_path_sh = os.path.join(DATA_PATH, tick_date + "_" + doc_type, "SH", tick_date)
         temp_data_path_sz = os.path.join(DATA_PATH, tick_date + "_" + doc_type, "SZ", tick_date)
@@ -188,7 +193,11 @@ def add_data(tick_date, doc_type, stock_name_dict):
 
         sz_files = (
             (
-                set([i.split(".csv")[0] for i in os.listdir(temp_data_path_sz) if i[:2] == "30" or i[0] == "0"])
+                {
+                    i.split(".csv")[0]
+                    for i in os.listdir(temp_data_path_sz)
+                    if i[:2] == "30" or i[0] == "0"
+                }
                 & set(stock_name_dict["SZ"])
             )
             if is_files_exist["sz"]
@@ -197,17 +206,21 @@ def add_data(tick_date, doc_type, stock_name_dict):
         sz_file_nums = len(sz_files) if is_files_exist["sz"] else 0
         sh_files = (
             (
-                set([i.split(".csv")[0] for i in os.listdir(temp_data_path_sh) if i[0] == "6"])
+                {
+                    i.split(".csv")[0]
+                    for i in os.listdir(temp_data_path_sh)
+                    if i[0] == "6"
+                }
                 & set(stock_name_dict["SH"])
             )
             if is_files_exist["sh"]
             else set()
         )
         sh_file_nums = len(sh_files) if is_files_exist["sh"] else 0
-        print("sz_file_nums:{}, sh_file_nums:{}".format(sz_file_nums, sh_file_nums))
+        print(f"sz_file_nums:{sz_file_nums}, sh_file_nums:{sh_file_nums}")
 
-        f = (DATA_INFO_PATH / "data_info_log_{}_{}".format(doc_type, tick_date)).open("w+")
-        f.write("sz:{}, sh:{}, date:{}:".format(sz_file_nums, sh_file_nums, tick_date) + "\n")
+        f = (DATA_INFO_PATH / f"data_info_log_{doc_type}_{tick_date}").open("w+")
+        f.write(f"sz:{sz_file_nums}, sh:{sh_file_nums}, date:{tick_date}:" + "\n")
         f.close()
 
         if sh_file_nums > 0:
@@ -227,19 +240,24 @@ def add_data(tick_date, doc_type, stock_name_dict):
                 for index, name in enumerate(list(sz_files))
             )
 
-        os.system(f"rm -f {DATA_PATH}/{tick_date + '_{}.tar.gz'.format(doc_type)}")
+        os.system(f"rm -f {DATA_PATH}/{tick_date + f'_{doc_type}.tar.gz'}")
         os.system(f"rm -rf {DATA_PATH}/{tick_date + '_' + doc_type}")
         total_time = time.time() - begin_time
-        f = (DATA_FINISH_INFO_PATH / "data_info_finish_log_{}_{}".format(doc_type, tick_date)).open("w+")
-        f.write("finish: date:{}, consume_time:{}, end_time: {}".format(tick_date, total_time, time.time()) + "\n")
+        f = (
+            DATA_FINISH_INFO_PATH
+            / f"data_info_finish_log_{doc_type}_{tick_date}"
+        ).open("w+")
+        f.write(
+            f"finish: date:{tick_date}, consume_time:{total_time}, end_time: {time.time()}"
+            + "\n"
+        )
         f.close()
 
     except Exception as e:
         info = traceback.format_exc()
-        print("date error:" + str(e))
-        f = open(os.path.join(LOG_FILE_PATH, "temp_fail_{0}_{1}_{2}.txt".format(pid, tick_date, doc_type)), "a+")
-        f.write("fail:" + str(tick_date) + "\n" + str(e) + "\n" + str(info) + "\n")
-        f.close()
+        print(f"date error:{str(e)}")
+        with open(os.path.join(LOG_FILE_PATH, "temp_fail_{0}_{1}_{2}.txt".format(pid, tick_date, doc_type)), "a+") as f:
+            f.write(f"fail:{str(tick_date)}" + "\n" + str(e) + "\n" + str(info) + "\n")
 
 
 class DSCreator:
@@ -273,13 +291,17 @@ class DSCreator:
 
         # doc_type = 'Day'
         for doc_type in doc_type_l:
-            date_list = list(set([int(path.split("_")[0]) for path in os.listdir(DATABASE_PATH) if doc_type in path]))
-            date_list.sort()
+            date_list = sorted(
+                {
+                    int(path.split("_")[0])
+                    for path in os.listdir(DATABASE_PATH)
+                    if doc_type in path
+                }
+            )
             date_list = [str(date) for date in date_list]
 
-            f = open(ALL_STOCK_PATH, "r")
-            stock_name_list = [lines.split("\t")[0] for lines in f.readlines()]
-            f.close()
+            with open(ALL_STOCK_PATH, "r") as f:
+                stock_name_list = [lines.split("\t")[0] for lines in f.readlines()]
             stock_name_dict = {
                 "SH": [stock_name[2:] for stock_name in stock_name_list if "SH" in stock_name],
                 "SZ": [stock_name[2:] for stock_name in stock_name_list if "SZ" in stock_name],
@@ -299,8 +321,8 @@ class DSCreator:
                     pdf = pd.DataFrame(index=[pd.Timestamp("1900-01-01")])
                     pdf.index.name = "date"  # an col named date is necessary
                     lib.write(stock_name, pdf)
-            print("initialize count: {}".format(initialize_count))
-            print("tasks: {}".format(date_list))
+            print(f"initialize count: {initialize_count}")
+            print(f"tasks: {date_list}")
             a.reset()
 
             # date_list = [files.split("_")[0] for files in os.listdir("./raw_data_price") if "tar" in files]

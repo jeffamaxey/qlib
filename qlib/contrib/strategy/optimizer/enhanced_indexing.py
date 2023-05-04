@@ -159,9 +159,8 @@ class EnhancedIndexingOptimizer(BaseOptimizer):
 
         # total turnover constraint
         t_cons = []
-        if self.delta is not None:
-            if w0 is not None and w0.sum() > 0:
-                t_cons.extend([cp.norm(w - w0, 1) <= self.delta])
+        if self.delta is not None and w0 is not None and w0.sum() > 0:
+            t_cons.extend([cp.norm(w - w0, 1) <= self.delta])
 
         # optimize
         # trial 1: use all constraints
@@ -192,7 +191,7 @@ class EnhancedIndexingOptimizer(BaseOptimizer):
             return w0
 
         if prob.status == "optimal_inaccurate":
-            logger.warning(f"the optimization is inaccurate")
+            logger.warning("the optimization is inaccurate")
 
         # remove small weight
         w = np.asarray(w.value)

@@ -86,7 +86,7 @@ class ConfigSectionProcessor(Processor):
             "VSUMN",
             "VSUMD",
         ]
-        pat = "|".join(["^" + x for x in _cols])
+        pat = "|".join([f"^{x}" for x in _cols])
         cols = df_focus.columns[df_focus.columns.str.contains(pat) & (~df_focus.columns.isin(["HIGH0", "LOW0"]))]
         df_focus[cols] = df_focus[cols].groupby(level="datetime").apply(_feature_norm)
 

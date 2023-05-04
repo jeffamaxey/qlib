@@ -88,34 +88,7 @@ class TCTS(Model):
         self._weight_optimizer = weight_optimizer
 
         self.logger.info(
-            "TCTS parameters setting:"
-            "\nd_feat : {}"
-            "\nhidden_size : {}"
-            "\nnum_layers : {}"
-            "\ndropout : {}"
-            "\nn_epochs : {}"
-            "\nbatch_size : {}"
-            "\nearly_stop : {}"
-            "\ntarget_label : {}"
-            "\nmode : {}"
-            "\nloss_type : {}"
-            "\nvisible_GPU : {}"
-            "\nuse_GPU : {}"
-            "\nseed : {}".format(
-                d_feat,
-                hidden_size,
-                num_layers,
-                dropout,
-                n_epochs,
-                batch_size,
-                early_stop,
-                target_label,
-                mode,
-                loss,
-                GPU,
-                self.use_gpu,
-                seed,
-            )
+            f"TCTS parameters setting:\nd_feat : {d_feat}\nhidden_size : {hidden_size}\nnum_layers : {num_layers}\ndropout : {dropout}\nn_epochs : {n_epochs}\nbatch_size : {batch_size}\nearly_stop : {early_stop}\ntarget_label : {target_label}\nmode : {mode}\nloss_type : {loss}\nvisible_GPU : {GPU}\nuse_GPU : {self.use_gpu}\nseed : {seed}"
         )
 
     def loss_fn(self, pred, label, weight):
@@ -130,7 +103,7 @@ class TCTS(Model):
             return torch.mean(loss * weight.transpose(0, 1))
 
         else:
-            raise NotImplementedError("mode {} is not supported!".format(self.mode))
+            raise NotImplementedError(f"mode {self.mode} is not supported!")
 
     def train_epoch(self, x_train, y_train, x_valid, y_valid):
         x_train_values = x_train.values
@@ -301,13 +274,17 @@ class TCTS(Model):
         elif self._fore_optimizer.lower() == "gd":
             self.fore_optimizer = optim.SGD(self.fore_model.parameters(), lr=self.fore_lr)
         else:
-            raise NotImplementedError("optimizer {} is not supported!".format(self._fore_optimizer))
+            raise NotImplementedError(
+                f"optimizer {self._fore_optimizer} is not supported!"
+            )
         if self._weight_optimizer.lower() == "adam":
             self.weight_optimizer = optim.Adam(self.weight_model.parameters(), lr=self.weight_lr)
         elif self._weight_optimizer.lower() == "gd":
             self.weight_optimizer = optim.SGD(self.weight_model.parameters(), lr=self.weight_lr)
         else:
-            raise NotImplementedError("optimizer {} is not supported!".format(self._weight_optimizer))
+            raise NotImplementedError(
+                f"optimizer {self._weight_optimizer} is not supported!"
+            )
 
         self.fitted = False
         self.fore_model.to(self.device)

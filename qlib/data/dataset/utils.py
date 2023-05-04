@@ -36,7 +36,7 @@ def get_level_index(df: pd.DataFrame, level=Union[str, int]) -> int:
     elif isinstance(level, int):
         return level
     else:
-        raise NotImplementedError(f"This type of input is not supported")
+        raise NotImplementedError("This type of input is not supported")
 
 
 def fetch_df_by_index(
@@ -69,18 +69,17 @@ def fetch_df_by_index(
     idx_slc = (selector, slice(None, None))
     if get_level_index(df, level) == 1:
         idx_slc = idx_slc[1], idx_slc[0]
-    if fetch_orig:
-        for slc in idx_slc:
-            if slc != slice(None, None):
-                return df.loc[
-                    pd.IndexSlice[idx_slc],
-                ]
-        else:  # pylint: disable=W0120
-            return df
-    else:
+    if not fetch_orig:
         return df.loc[
             pd.IndexSlice[idx_slc],
         ]
+    for slc in idx_slc:
+        if slc != slice(None, None):
+            return df.loc[
+                pd.IndexSlice[idx_slc],
+            ]
+    else:  # pylint: disable=W0120
+        return df
 
 
 def fetch_df_by_col(df: pd.DataFrame, col_set: Union[str, List[str]]) -> pd.DataFrame:

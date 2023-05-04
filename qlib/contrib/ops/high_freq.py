@@ -86,7 +86,7 @@ class DayCumsum(ElemOperator):
     def period_cusum(self, df):
         df = df.copy()
         assert len(df) == 240
-        df.iloc[0 : self.start_id] = 0
+        df.iloc[:self.start_id] = 0
         df = df.cumsum()
         df.iloc[self.end_id + 1 : 240] = 0
         return df

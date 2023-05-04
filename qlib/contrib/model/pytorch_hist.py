@@ -84,40 +84,7 @@ class HIST(Model):
         self.seed = seed
 
         self.logger.info(
-            "HIST parameters setting:"
-            "\nd_feat : {}"
-            "\nhidden_size : {}"
-            "\nnum_layers : {}"
-            "\ndropout : {}"
-            "\nn_epochs : {}"
-            "\nlr : {}"
-            "\nmetric : {}"
-            "\nearly_stop : {}"
-            "\noptimizer : {}"
-            "\nloss_type : {}"
-            "\nbase_model : {}"
-            "\nmodel_path : {}"
-            "\nstock2concept : {}"
-            "\nstock_index : {}"
-            "\nuse_GPU : {}"
-            "\nseed : {}".format(
-                d_feat,
-                hidden_size,
-                num_layers,
-                dropout,
-                n_epochs,
-                lr,
-                metric,
-                early_stop,
-                optimizer.lower(),
-                loss,
-                base_model,
-                model_path,
-                stock2concept,
-                stock_index,
-                GPU,
-                seed,
-            )
+            f"HIST parameters setting:\nd_feat : {d_feat}\nhidden_size : {hidden_size}\nnum_layers : {num_layers}\ndropout : {dropout}\nn_epochs : {n_epochs}\nlr : {lr}\nmetric : {metric}\nearly_stop : {early_stop}\noptimizer : {optimizer.lower()}\nloss_type : {loss}\nbase_model : {base_model}\nmodel_path : {model_path}\nstock2concept : {stock2concept}\nstock_index : {stock_index}\nuse_GPU : {GPU}\nseed : {seed}"
         )
 
         if self.seed is not None:
@@ -138,7 +105,7 @@ class HIST(Model):
         elif optimizer.lower() == "gd":
             self.train_optimizer = optim.SGD(self.HIST_model.parameters(), lr=self.lr)
         else:
-            raise NotImplementedError("optimizer {} is not supported!".format(optimizer))
+            raise NotImplementedError(f"optimizer {optimizer} is not supported!")
 
         self.fitted = False
         self.HIST_model.to(self.device)
@@ -157,7 +124,7 @@ class HIST(Model):
         if self.loss == "mse":
             return self.mse(pred[mask], label[mask])
 
-        raise ValueError("unknown loss `%s`" % self.loss)
+        raise ValueError(f"unknown loss `{self.loss}`")
 
     def metric_fn(self, pred, label):
 
@@ -174,7 +141,7 @@ class HIST(Model):
         if self.metric == ("", "loss"):
             return -self.loss_fn(pred[mask], label[mask])
 
-        raise ValueError("unknown metric `%s`" % self.metric)
+        raise ValueError(f"unknown metric `{self.metric}`")
 
     def get_daily_inter(self, df, shuffle=False):
         # organize the train data into daily batches
@@ -285,7 +252,7 @@ class HIST(Model):
         elif self.base_model == "GRU":
             pretrained_model = GRUModel()
         else:
-            raise ValueError("unknown base model name `%s`" % self.base_model)
+            raise ValueError(f"unknown base model name `{self.base_model}`")
 
         if self.model_path is not None:
             self.logger.info("Loading pretrained model...")
@@ -389,7 +356,7 @@ class HISTModel(nn.Module):
                 dropout=dropout,
             )
         else:
-            raise ValueError("unknown base model name `%s`" % base_model)
+            raise ValueError(f"unknown base model name `{base_model}`")
 
         self.fc_es = nn.Linear(hidden_size, hidden_size)
         torch.nn.init.xavier_uniform_(self.fc_es.weight)
@@ -428,8 +395,7 @@ class HISTModel(nn.Module):
         xy = x.mm(torch.t(y))
         x_norm = torch.sqrt(torch.sum(x * x, dim=1)).reshape(-1, 1)
         y_norm = torch.sqrt(torch.sum(y * y, dim=1)).reshape(-1, 1)
-        cos_similarity = xy / (x_norm.mm(torch.t(y_norm)) + 1e-6)
-        return cos_similarity
+        return xy / (x_norm.mm(torch.t(y_norm)) + 1e-6)
 
     def forward(self, x, concept_matrix):
         device = torch.device(torch.get_device(x))
@@ -498,6 +464,4 @@ class HISTModel(nn.Module):
 
         # Stock Trend Prediction
         all_info = output_es + output_is + output_indi
-        pred_all = self.fc_out(all_info).squeeze()
-
-        return pred_all
+        return self.fc_out(all_info).squeeze()

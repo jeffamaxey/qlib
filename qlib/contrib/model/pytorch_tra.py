@@ -146,24 +146,24 @@ class TRAModel(Model):
         print(self.tra)
 
         if self.init_state:
-            self.logger.warning(f"load state dict from `init_state`")
+            self.logger.warning("load state dict from `init_state`")
             state_dict = torch.load(self.init_state, map_location="cpu")
             self.model.load_state_dict(state_dict["model"])
             res = load_state_dict_unsafe(self.tra, state_dict["tra"])
             self.logger.warning(str(res))
 
         if self.reset_router:
-            self.logger.warning(f"reset TRA.router parameters")
+            self.logger.warning("reset TRA.router parameters")
             self.tra.fc.reset_parameters()
             self.tra.router.reset_parameters()
 
         if self.freeze_model:
-            self.logger.warning(f"freeze model parameters")
+            self.logger.warning("freeze model parameters")
             for param in self.model.parameters():
                 param.requires_grad_(False)
 
         if self.freeze_predictors:
-            self.logger.warning(f"freeze TRA.predictors parameters")
+            self.logger.warning("freeze TRA.predictors parameters")
             for param in self.tra.predictors.parameters():
                 param.requires_grad_(False)
 
@@ -219,7 +219,7 @@ class TRAModel(Model):
                     prob,
                     state.mean(dim=1),
                     count,
-                    self.transport_method if not is_pretrain else "oracle",
+                    "oracle" if is_pretrain else self.transport_method,
                     self.alpha,
                     training=True,
                 )
@@ -254,7 +254,7 @@ class TRAModel(Model):
             total_loss += loss.item()
             total_count += 1
 
-        if self.use_daily_transport and len(P_all) > 0:
+        if self.use_daily_transport and P_all:
             P_all = pd.concat(P_all, axis=0)
             prob_all = pd.concat(prob_all, axis=0)
             choice_all = pd.concat(choice_all, axis=0)
@@ -299,7 +299,7 @@ class TRAModel(Model):
                     prob,
                     state.mean(dim=1),
                     count,
-                    self.transport_method if not is_pretrain else "oracle",
+                    "oracle" if is_pretrain else self.transport_method,
                     self.alpha,
                     training=False,
                 )
@@ -385,16 +385,16 @@ class TRAModel(Model):
                 train_set.clear_memory()  # NOTE: clear the shared memory
                 train_metrics = self.test_epoch(epoch, train_set, is_pretrain=is_pretrain, prefix="train")[0]
                 evals_result["train"].append(train_metrics)
-                self.logger.info("train metrics: %s" % train_metrics)
+                self.logger.info(f"train metrics: {train_metrics}")
 
             valid_metrics = self.test_epoch(epoch, valid_set, is_pretrain=is_pretrain, prefix="valid")[0]
             evals_result["valid"].append(valid_metrics)
-            self.logger.info("valid metrics: %s" % valid_metrics)
+            self.logger.info(f"valid metrics: {valid_metrics}")
 
             if self.eval_test:
                 test_metrics = self.test_epoch(epoch, test_set, is_pretrain=is_pretrain, prefix="test")[0]
                 evals_result["test"].append(test_metrics)
-                self.logger.info("test metrics: %s" % test_metrics)
+                self.logger.info(f"test metrics: {test_metrics}")
 
             if valid_metrics["IC"] > best_score:
                 best_score = valid_metrics["IC"]
@@ -409,7 +409,7 @@ class TRAModel(Model):
             else:
                 stop_rounds += 1
                 if stop_rounds >= self.early_stop:
-                    self.logger.info("early stop @ %s" % epoch)
+                    self.logger.info(f"early stop @ {epoch}")
                     break
 
         self.logger.info("best score: %.6lf @ %d" % (best_score, best_epoch))

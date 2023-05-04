@@ -188,8 +188,8 @@ class SBBStrategyBase(BaseStrategy):
             _amount_trade_unit = self.trade_exchange.get_amount_of_trade_unit(
                 stock_id=order.stock_id, start_time=order.start_time, end_time=order.end_time
             )
+            _order_amount = None
             if _pred_trend == self.TREND_MID:
-                _order_amount = None
                 # considering trade unit
                 if _amount_trade_unit is None:
                     # divide the order into equal parts, and trade one part
@@ -204,12 +204,12 @@ class SBBStrategyBase(BaseStrategy):
                     _order_amount = (
                         (trade_unit_cnt + trade_len - trade_step - 1) // (trade_len - trade_step) * _amount_trade_unit
                     )
-                if order.direction == order.SELL:
-                    # sell all amount at last
-                    if self.trade_amount[order.stock_id] > 1e-5 and (
-                        _order_amount < 1e-5 or trade_step == trade_len - 1
-                    ):
-                        _order_amount = self.trade_amount[order.stock_id]
+                if (
+                    order.direction == order.SELL
+                    and self.trade_amount[order.stock_id] > 1e-5
+                    and (_order_amount < 1e-5 or trade_step == trade_len - 1)
+                ):
+                    _order_amount = self.trade_amount[order.stock_id]
 
                 _order_amount = min(_order_amount, self.trade_amount[order.stock_id])
 
@@ -224,7 +224,6 @@ class SBBStrategyBase(BaseStrategy):
                     order_list.append(_order)
 
             else:
-                _order_amount = None
                 # considering trade unit
                 if _amount_trade_unit is None:
                     # N trade day left, divide the order into N + 1 parts, and trade 2 parts
@@ -240,12 +239,12 @@ class SBBStrategyBase(BaseStrategy):
                         * 2
                         * _amount_trade_unit
                     )
-                if order.direction == order.SELL:
-                    # sell all amount at last
-                    if self.trade_amount[order.stock_id] > 1e-5 and (
-                        _order_amount < 1e-5 or trade_step == trade_len - 1
-                    ):
-                        _order_amount = self.trade_amount[order.stock_id]
+                if (
+                    order.direction == order.SELL
+                    and self.trade_amount[order.stock_id] > 1e-5
+                    and (_order_amount < 1e-5 or trade_step == trade_len - 1)
+                ):
+                    _order_amount = self.trade_amount[order.stock_id]
 
                 _order_amount = min(_order_amount, self.trade_amount[order.stock_id])
 
@@ -268,24 +267,20 @@ class SBBStrategyBase(BaseStrategy):
                                 direction=order.direction,  # 1 for buy
                             )
                             order_list.append(_order)
-                    else:
-                        # in the second one of two adjacent bars
-                        # if look short on the price, buy the stock more
-                        # if look long on the price, sell the stock more
-                        if (
+                    elif (
                             _pred_trend == self.TREND_SHORT
                             and order.direction == order.BUY
                             or _pred_trend == self.TREND_LONG
                             and order.direction == order.SELL
                         ):
-                            _order = Order(
-                                stock_id=order.stock_id,
-                                amount=_order_amount,
-                                start_time=trade_start_time,
-                                end_time=trade_end_time,
-                                direction=order.direction,  # 1 for buy
-                            )
-                            order_list.append(_order)
+                        _order = Order(
+                            stock_id=order.stock_id,
+                            amount=_order_amount,
+                            start_time=trade_start_time,
+                            end_time=trade_end_time,
+                            direction=order.direction,  # 1 for buy
+                        )
+                        order_list.append(_order)
 
             if trade_step % 2 == 0:
                 # in the first one of two adjacent bars, store the trend for the second one to use
@@ -357,25 +352,23 @@ class SBBStrategyEMA(SBBStrategyBase):
         self._reset_signal()
 
     def _pred_price_trend(self, stock_id, pred_start_time=None, pred_end_time=None):
-        # if no signal, return mid trend
         if stock_id not in self.signal:
             return self.TREND_MID
+        _sample_signal = resam_ts_data(
+            self.signal[stock_id],
+            pred_start_time,
+            pred_end_time,
+            method=ts_data_last,
+        )
+        # if EMA signal == 0 or None, return mid trend
+        if _sample_signal is None or np.isnan(_sample_signal) or _sample_signal == 0:
+            return self.TREND_MID
+        # if EMA signal > 0, return long trend
+        elif _sample_signal > 0:
+            return self.TREND_LONG
+        # if EMA signal < 0, return short trend
         else:
-            _sample_signal = resam_ts_data(
-                self.signal[stock_id],
-                pred_start_time,
-                pred_end_time,
-                method=ts_data_last,
-            )
-            # if EMA signal == 0 or None, return mid trend
-            if _sample_signal is None or np.isnan(_sample_signal) or _sample_signal == 0:
-                return self.TREND_MID
-            # if EMA signal > 0, return long trend
-            elif _sample_signal > 0:
-                return self.TREND_LONG
-            # if EMA signal < 0, return short trend
-            else:
-                return self.TREND_SHORT
+            return self.TREND_SHORT
 
 
 class ACStrategy(BaseStrategy):
@@ -514,10 +507,12 @@ class ACStrategy(BaseStrategy):
                     _order_amount, stock_id=order.stock_id, start_time=order.start_time, end_time=order.end_time
                 )
 
-            if order.direction == order.SELL:
-                # sell all amount at last
-                if self.trade_amount[order.stock_id] > 1e-5 and (_order_amount < 1e-5 or trade_step == trade_len - 1):
-                    _order_amount = self.trade_amount[order.stock_id]
+            if (
+                order.direction == order.SELL
+                and self.trade_amount[order.stock_id] > 1e-5
+                and (_order_amount < 1e-5 or trade_step == trade_len - 1)
+            ):
+                _order_amount = self.trade_amount[order.stock_id]
 
             _order_amount = min(_order_amount, self.trade_amount[order.stock_id])
 
@@ -579,16 +574,19 @@ class RandomOrderStrategy(BaseStrategy):
 
         order_list = []
         if step_time_start in self.volume_df:
-            for stock_id, volume in self.volume_df[step_time_start].dropna().sample(frac=self.sample_ratio).items():
-                order_list.append(
-                    self.common_infra.get("trade_exchange")
-                    .get_order_helper()
-                    .create(
-                        code=stock_id,
-                        amount=volume * self.volume_ratio,
-                        direction=self.direction,
-                    )
+            order_list.extend(
+                self.common_infra.get("trade_exchange")
+                .get_order_helper()
+                .create(
+                    code=stock_id,
+                    amount=volume * self.volume_ratio,
+                    direction=self.direction,
                 )
+                for stock_id, volume in self.volume_df[step_time_start]
+                .dropna()
+                .sample(frac=self.sample_ratio)
+                .items()
+            )
         return TradeDecisionWO(order_list, self, self.trade_range)
 
 
@@ -659,13 +657,12 @@ class FileOrderStrategy(BaseStrategy):
         except KeyError:
             return TradeDecisionWO([], self)
         else:
-            order_list = []
-            for idx, row in df.iterrows():
-                order_list.append(
-                    oh.create(
-                        code=idx,
-                        amount=row["amount"],
-                        direction=Order.parse_dir(row["direction"]),
-                    )
+            order_list = [
+                oh.create(
+                    code=idx,
+                    amount=row["amount"],
+                    direction=Order.parse_dir(row["direction"]),
                 )
+                for idx, row in df.iterrows()
+            ]
             return TradeDecisionWO(order_list, self, self.trade_range)
